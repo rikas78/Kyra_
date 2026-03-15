@@ -1,0 +1,21 @@
+{
+  "name": "kyra-v3",
+  "version": "3.0.0",
+  "description": "Kyra AI - Knowledge, Yield, Reasoning, Awareness",
+  "main": "src/kyra_main.js",
+  "scripts": {
+    "start": "node src/kyra_main.js",
+    "dev": "nodemon src/kyra_main.js"
+  },
+  "author": "Riccardo Asti",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.18.0",
+    "@google/generative-ai": "^0.21.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.3",
+    "ws": "^8.16.0"
+  }
+}
