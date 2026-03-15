@@ -70,7 +70,7 @@ async function kyraChat(message) {
 const app = express();
 app.use(cors(), express.json());
 
-app.get("/", (req, res) => { res.send("<h1>Kyra v4.8 Online</h1>"); });
+
 
 app.post("/api/command", async (req, res) => {
     const { message } = req.body;
