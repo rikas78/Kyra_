@@ -3,1383 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sim is Real - Dashboard</title>
+    <title>Kyra OS v6.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.263.0"
+        }
+    }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        /* --- INIZIO MIGLIORAMENTI CSS --- */
-        html, body {
-            height: 100%;
-            overflow: hidden; /* Previene lo scroll a livello del body, gestito internamente */
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0a0e1a; /* Un blu notte profondo */
-            overscroll-behavior: none; /* Disabilita il "pull-to-refresh" su mobile */
-        }
-        #app-container {
-            height: 100vh; /* Usa 100vh per l'altezza totale */
-        }
-        /* --- FINE MIGLIORAMENTI CSS --- */
-        .sidebar-bg {
-            background-color: rgba(17, 24, 39, 0.8); /* bg-gray-900 con trasparenza */
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .nav-link {
-            transition: all 0.2s ease-in-out;
-            border-left: 3px solid transparent;
-        }
-        .nav-link.active {
-            background-color: rgba(239, 68, 68, 0.15); /* red-500/15 */
-            color: #f87171; /* text-red-400 */
-            border-left-color: #ef4444; /* border-red-500 */
-        }
-        .nav-link:hover {
-            background-color: rgba(239, 68, 68, 0.1);
-        }
-        .main-content-bg {
-             background-image: radial-gradient(circle at top right, rgba(239, 68, 68, 0.1), transparent 40%),
-                              radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.1), transparent 50%);
-        }
-        .cta-btn, .form-submit-btn, .tool-btn {
-            transition: all 0.3s ease;
-            background: linear-gradient(90deg, #b91c1c, #ef4444);
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
-        }
-        .cta-btn:hover, .form-submit-btn:hover, .tool-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
-        }
-         .race-card, .info-card {
-            background-color: rgba(30, 41, 59, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
-        }
-        .race-card:hover {
-            transform: translateY(-5px);
-            border-color: #ef4444;
-        }
-        .tooltip-container {
-            position: relative;
-            display: inline-block;
-        }
-        .tooltip-text {
-            visibility: hidden;
-            width: 220px;
-            background-color: #1f2937;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 8px;
-            position: absolute;
-            z-index: 50;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -110px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            border: 1px solid #4b5563;
-        }
-        .tooltip-container:hover .tooltip-text {
-            visibility: visible;
-            opacity: 1;
-        }
-        .modal-backdrop {
-            background-color: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);
-        }
-        .notification {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: 0.5rem;
-            color: white;
-            z-index: 1000;
-            transform: translateX(calc(100% + 20px));
-            transition: transform 0.3s ease-in-out;
-        }
-        .notification.show {
-            transform: translateX(0);
-        }
-        /* Stili per i tools */
-        .tool-input, .tool-select, .tool-textarea {
-             background-color: rgba(17, 24, 39, 0.8);
-             border: 1px solid rgba(255, 255, 255, 0.2);
-             color: #e5e7eb;
-        }
-        .tool-tab {
-            background-color: rgba(30, 41, 59, 0.5);
-            transition: background-color 0.2s;
-            border: none;
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            color: #d1d5db;
-        }
-        .tool-tab.active, .tool-tab:hover {
-            background-color: rgba(239, 68, 68, 0.2);
-            color: #f87171;
-        }
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            background: #ef4444;
-            cursor: pointer;
-            border-radius: 50%;
-        }
-        .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            background: #ef4444;
-            cursor: pointer;
-            border-radius: 50%;
-        }
-        .suggestions {
-            position: absolute;
-            z-index: 10;
-            border: 1px solid #4b5563;
-            background-color: #1f2937;
-            max-height: 200px;
-            overflow-y: auto;
-            border-radius: 0.5rem;
-        }
-        .suggestion-item {
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-        }
-        .suggestion-item:hover {
-            background-color: #374151;
-        }
-        /* Stili aggiuntivi per MTU Guide (Dark Mode) */
-        .active-console-btn {
-            background-color: #ef4444;
-            color: white;
-        }
-        .inactive-console-btn {
-            background-color: #374151;
-            color: #d1d5db;
-        }
-        .step-card {
-            background-color: rgba(30, 41, 59, 0.7);
-            transition: transform 0.2s, border-color 0.2s;
-            border: 1px solid transparent;
-        }
-        .step-card:hover {
-            transform: translateY(-4px);
-            border-color: #ef4444;
-        }
-        .gemini-btn {
-            background: linear-gradient(90deg, #b91c1c, #ef4444);
-        }
-        .loader {
-            border: 4px solid #374151;
-            border-top: 4px solid #ef4444;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        #reaction-game-area {
-            cursor: pointer;
-        }
-        #reaction-target {
-            position: absolute;
-            background-color: #ef4444;
-            border-radius: 50%;
-            transition: all 0.1s;
-        }
-        .hidden { display: none; }
-        
-        /* Sidebar responsive */
-        @media (max-width: 768px) {
-            #sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease-in-out;
-                position: fixed;
-                z-index: 60; /* Aumentato per stare sopra la mobile header overlay */
-                height: 100%;
-            }
-            #sidebar.open {
-                transform: translateX(0);
-            }
-            #main-content {
-                width: 100%;
-            }
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-panel { background: rgba(30, 33, 43, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .kyra-eye { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
-<body class="text-gray-300">
-    <!-- INIZIO MODIFICA HEADER MOBILE -->
-    <div id="mobile-header" class="md:hidden fixed top-0 left-0 right-0 z-50 bg-gray-900/80 backdrop-blur-sm p-4 flex justify-between items-center border-b border-gray-700/50">
-        <button id="mobile-menu-btn" class="p-2 -ml-2">
-            <i data-lucide="menu" class="text-white"></i>
-        </button>
-        <div class="text-center">
-            <h2 id="mobile-page-title" class="text-lg font-bold text-white truncate">Dashboard</h2>
-            <p id="mobile-page-subtitle" class="text-xs text-gray-400">La tua abilità vale oro.</p>
-        </div>
-        <div class="w-8"></div> <!-- Spacer per centrare il titolo -->
-    </div>
-    <!-- FINE MODIFICA HEADER MOBILE -->
+<body class="bg-[#0b0c10] text-slate-100 font-sans selection:bg-blue-500/40 overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
+    <div id="root"></div>
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            Send, Mic, MicOff, Database, Zap, Radio, MonitorPlay, Maximize2, X, 
+            Image as ImageIcon, FileText, HardDrive, Cpu, Wifi, Youtube, Map, Play, 
+            ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ShieldAlert, Monitor,
+            MessageSquare, Gamepad2, LayoutGrid, Terminal, CalendarDays, BrainCircuit, Code, Search,
+            Eye, Lightbulb, Music as MusicIcon, Cloud
+        } from 'lucide-react';
 
-    <div id="app-container" class="flex relative">
-        <!-- Sidebar -->
-        <aside id="sidebar" class="w-64 sidebar-bg flex-shrink-0 flex flex-col md:relative md:translate-x-0">
-             <div class="p-6 text-center">
-                <h1 class="text-2xl font-bold text-white tracking-wider">
-                    <span class="text-red-500">SIM</span> is <span class="text-green-400">REAL</span>
-                </h1>
-                <span class="bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2 py-1 rounded-full">BETA</span>
-            </div>
-            <div class="p-4 border-y border-gray-700/50">
-                 <div id="user-profile-sidebar" class="hidden">
-                     <div class="flex items-center space-x-3 p-2">
-                        <img id="user-avatar" src="https://placehold.co/40x40/ef4444/ffffff?text=P" alt="User Avatar" class="rounded-full">
-                        <div>
-                            <p id="user-username-sidebar" class="font-semibold text-white">Pilota_01</p>
-                            <p id="logout-btn" class="text-xs text-gray-400 cursor-pointer hover:text-red-400">Logout</p>
-                        </div>
-                    </div>
-                     <div class="mt-4 space-y-2">
-                         <div class="flex items-center justify-between text-sm">
-                             <span class="flex items-center"><i data-lucide="gem" class="w-4 h-4 mr-2 text-cyan-400"></i>Skulls</span>
-                             <span id="skulls-balance-sidebar" class="font-bold text-white">1000</span>
-                         </div>
-                         <div class="flex items-center justify-between text-sm opacity-50">
-                             <span class="flex items-center"><i data-lucide="wallet" class="w-4 h-4 mr-2 text-green-400"></i>Wallet Reale</span>
-                             <span id="real-balance-sidebar" class="font-bold text-white">0,00 €</span>
-                         </div>
-                         <button class="w-full text-xs mt-2 bg-green-600/50 hover:bg-green-600/80 text-white font-bold py-1 px-2 rounded-md transition-colors">Ricarica</button>
-                    </div>
+        const KyraFace = ({ isListening, isGenerating }) => {
+            let eyeColor = "bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]";
+            let eyeAnim = "animate-pulse h-8";
+            if (isListening) { eyeColor = "bg-emerald-400 shadow-[0_0_25px_rgba(52,211,153,1)]"; eyeAnim = "h-10 scale-110"; } 
+            else if (isGenerating) { eyeColor = "bg-fuchsia-500 shadow-[0_0_20px_rgba(217,70,239,0.9)]"; eyeAnim = "h-6 animate-bounce"; }
+            return (
+                <div className="w-20 h-14 md:w-24 md:h-16 bg-[#050608] rounded-2xl border-2 border-white/10 flex items-center justify-center gap-3 shadow-inner relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-blue-500/5 opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                    <div className={`w-3 md:w-4 rounded-full kyra-eye ${eyeColor} ${eyeAnim}`}></div>
+                    <div className={`w-3 md:w-4 rounded-full kyra-eye ${eyeColor} ${eyeAnim}`}></div>
                 </div>
-                 <div id="login-buttons">
-                    <p class="text-sm font-bold text-center text-white mb-2">DRIVER</p>
-                    <p class="text-xs text-center text-gray-400 mb-4">Iscriviti e fai vedere chi sei.</p>
-                    <button id="login-btn" class="w-full mb-2 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Accedi</button>
-                    <button id="register-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Registrati</button>
-                </div>
-            </div>
-            <nav class="mt-4 flex flex-col space-y-2 px-4 flex-grow overflow-y-auto">
-                <a href="#" id="nav-dashboard" class="nav-link active flex items-center space-x-3 py-3 px-4 rounded-lg"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
-                <a href="#" id="nav-find-race" class="nav-link flex items-center space-x-3 py-3 px-4 rounded-lg"><i data-lucide="search"></i><span>Trova Gara</span></a>
-                <a href="#" id="nav-ongoing-races" class="nav-link flex items-center space-x-3 py-3 px-4 rounded-lg"><i data-lucide="play-circle"></i><span>Gare in Corso</span></a>
-                 <a href="#" id="nav-mini-game" class="nav-link flex items-center space-x-3 py-3 px-4 rounded-lg"><i data-lucide="gamepad-2"></i><span>Sala d'Attesa</span></a>
-                <a href="#" id="nav-create-race" class="nav-link flex items-center space-x-3 py-3 px-4 rounded-lg"><i data-lucide="plus-circle"></i><span>Crea Gara</span></a>
-                <a href="#" id="nav-extra-services" class="nav-link flex items-center space-x-3 py-3 px-4 rounded-lg"><i data-lucide="shopping-cart"></i><span>Servizi Extra</span></a>
-                <a href="#" id="nav-rules" class="nav-link flex items-center space-x-3 py-3 px-4 rounded-lg"><i data-lucide="shield-question"></i><span>Regolamento</span></a>
-                <a href="#" id="nav-car-setup" class="nav-link flex items-center space-x-3 py-3 px-4 rounded-lg"><i data-lucide="sliders-horizontal"></i><span>Setup Auto</span></a>
-                <a href="#" id="nav-mtu-guide" class="nav-link flex items-center space-x-3 py-3 px-4 rounded-lg"><i data-lucide="network"></i><span>Ottimizza Rete</span></a>
-                <a href="#" id="nav-leaderboards" class="nav-link flex items-center space-x-3 py-3 px-4 rounded-lg"><i data-lucide="bar-chart-3"></i><span>Classifiche</span></a>
-            </nav>
+            );
+        };
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('CHAT');
+            const [messages, setMessages] = useState([]);
+            const [inputText, setInputText] = useState('');
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [isListening, setIsListening] = useState(false);
+            const [handsFree, setHandsFree] = useState(false);
+            const [serverUrl] = useState(window.location.origin); 
+            const [memoryStats, setMemoryStats] = useState({ sessioni: 0, fattiCount: 0, fattiList: [] });
+            const [attachment, setAttachment] = useState(null);
+            const [enlargedImage, setEnlargedImage] = useState(null);
+            const [activeIframe, setActiveIframe] = useState(null);
+            const [pi4Status, setPi4Status] = useState('offline');
+            const [codeDraft, setCodeDraft] = useState('// Chiedi a Kyra di generare uno script Python o JS...\n// Apparirà qui, pronto per essere inviato a Termux.');
+            const [agendaItems, setAgendaItems] = useState([{ id: 1, text: "Completare montaggio PiCar-X", type: "user", date: "Oggi" }]);
             
-        </aside>
+            const chatEndRef = useRef(null);
+            const recognitionRef = useRef(null);
+            const imageInputRef = useRef(null);
 
-        <!-- Main Content -->
-        <main id="main-content" class="flex-1 overflow-y-auto main-content-bg md:pt-0 pt-20">
-            <div class="p-4 sm:p-8 pb-16">
-                <header class="hidden md:flex justify-between items-center mb-8">
-                    <div>
-                        <h2 id="page-title" class="text-3xl font-bold text-white">Dashboard</h2>
-                         <p id="page-subtitle" class="text-gray-400 mt-1">La tua abilità vale oro. Mettila alla prova.</p>
-                    </div>
-                   
-                    <div id="race-countdown-container" class="info-card p-3 rounded-lg text-center hidden">
-                        <p class="text-sm text-gray-400">Prossima gara tra:</p>
-                        <p id="race-countdown" class="font-bold text-white text-lg tracking-widest">--:--:--</p>
-                    </div>
-                </header>
+            useEffect(() => {
+                fetch(`${serverUrl}/api/memoria`).then(res => res.json())
+                .then(data => setMemoryStats({ sessioni: data.sessioni || 0, fattiCount: data.fatti?.length || 0, fattiList: data.fatti || [] })).catch(e => console.log("Offline"));
+            }, [serverUrl, messages]);
+            useEffect(() => { if(activeTab === 'CHAT') chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, activeTab]);
 
-                <div id="page-dashboard" class="page">
-                    <div id="dashboard-hero" class="text-center mb-12">
-                         <h3 class="text-4xl font-bold text-white leading-tight">Sei il più veloce? Scommettiamo di no.</h3>
-                         <p class="text-xl text-gray-400 mt-2">Mettiti alla prova. Gareggia, vinci e guadagna.</p>
-                    </div>
-                    <h3 class="text-2xl font-bold text-white mb-4">Gare Ufficiali Sim is Real</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        <div class="race-card rounded-lg overflow-hidden flex flex-col"><img src="https://placehold.co/600x300/1e293b/ef4444?text=Red+Bull+Ring" alt="Red Bull Ring"><div class="p-4 flex flex-col flex-grow"><h4 class="text-xl font-bold text-white">Weekly Gr.3 Challenge</h4><p class="text-gray-400 text-sm">Speciale: Consumo gomme/benzina x5</p><div class="flex justify-between items-center mt-4"><p class="text-sm">Iscrizione: <span class="font-bold text-green-400">2 €</span></p><p class="text-sm">Partecipanti: <span class="font-bold text-white participant-count">0 / 16</span></p></div><div class="flex-grow"></div><div class="flex items-center justify-between mt-4"><button data-cost-type="real" data-cost="2" class="join-race-btn w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Partecipa</button><i data-lucide="message-square" class="ml-3 text-gray-400 hover:text-white cursor-pointer"></i></div></div></div>
-                        <div class="race-card rounded-lg overflow-hidden flex flex-col"><img src="https://placehold.co/600x300/1e293b/ef4444?text=Spa" alt="Spa Track"><div class="p-4 flex flex-col flex-grow"><h4 class="text-xl font-bold text-white">Spa Challenge</h4><p class="text-gray-400">Auto: Gr.3</p><div class="flex justify-between items-center mt-4"><p class="text-sm">Iscrizione: <span class="font-bold text-green-400">5 €</span></p><p class="text-sm">Partecipanti: <span class="font-bold text-white participant-count">0 / 16</span></p></div><div class="flex-grow"></div><div class="flex items-center justify-between mt-4"><button data-cost-type="real" data-cost="5" class="join-race-btn w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Partecipa</button><i data-lucide="message-square" class="ml-3 text-gray-400 hover:text-white cursor-pointer"></i></div></div></div>
-                        <div class="race-card rounded-lg overflow-hidden flex flex-col"><img src="https://placehold.co/600x300/1e293b/ef4444?text=Nürburgring" alt="Nurburgring Track"><div class="p-4 flex flex-col flex-grow"><h4 class="text-xl font-bold text-white">Green Hell Pro</h4><p class="text-gray-400">Auto: GT3</p><div class="flex justify-between items-center mt-4"><p class="text-sm">Iscrizione: <span class="font-bold text-green-400">10 €</span></p><p class="text-sm">Partecipanti: <span class="font-bold text-white participant-count">0 / 16</span></p></div><div class="flex-grow"></div><div class="flex items-center justify-between mt-4"><button data-cost-type="real" data-cost="10" class="join-race-btn w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Partecipa</button><i data-lucide="message-square" class="ml-3 text-gray-400 hover:text-white cursor-pointer"></i></div></div></div>
-                        <div class="race-card rounded-lg overflow-hidden flex flex-col border-cyan-400"><img src="https://placehold.co/600x300/1e293b/06b6d4?text=Tsukuba" alt="Tsukuba Track"><div class="p-4 flex flex-col flex-grow"><h4 class="text-xl font-bold text-white">Bonus Skulls Race</h4><p class="text-gray-400">Auto: Qualsiasi</p><div class="flex justify-between items-center mt-4"><p class="text-sm">Iscrizione: <span class="font-bold text-cyan-400">400 Skulls</span></p><p class="text-sm">Partecipanti: <span class="font-bold text-white participant-count">0 / 16</span></p></div><div class="flex-grow"></div><div class="flex items-center justify-between mt-4"><button data-cost-type="skulls" data-cost="400" class="join-race-btn w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Partecipa</button><i data-lucide="message-square" class="ml-3 text-gray-400 hover:text-white cursor-pointer"></i></div></div></div>
-                    </div>
-                </div>
-                
-                <div id="page-find-race" class="page hidden">
-                   <div class="info-card p-6 md:p-8 rounded-lg">
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <div><label class="block mb-2 text-sm font-medium text-gray-400">Categoria Auto</label><select class="w-full tool-input rounded-lg p-2.5 text-white focus:ring-red-500 focus:border-red-500"><option>Qualsiasi</option><option>Gr.3</option><option>Gr.4</option><option>LMP1</option></select></div>
-                            <div><label class="block mb-2 text-sm font-medium text-gray-400">Circuito</label><input type="text" placeholder="Nome circuito..." class="w-full tool-input rounded-lg p-2.5 text-white focus:ring-red-500 focus:border-red-500"></div>
-                            <div><label class="block mb-2 text-sm font-medium text-gray-400">Data</label><input type="date" class="w-full tool-input rounded-lg p-2.5 text-white focus:ring-red-500 focus:border-red-500" style="color-scheme: dark;"></div>
-                            <div class="flex items-end space-x-4">
-                                <label class="flex items-center text-sm"><input type="checkbox" class="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-600 mr-2"> Pioggia</label>
-                                <label class="flex items-center text-sm"><input type="checkbox" class="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-600 mr-2"> Notte</label>
-                            </div>
-                        </div>
-                        <div class="mt-6 text-center">
-                            <button class="form-submit-btn text-white font-bold py-3 px-8 rounded-lg text-lg">Cerca Gara</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="page-ongoing-races" class="page hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div class="race-card rounded-lg overflow-hidden"><div class="relative"><img src="https://placehold.co/600x300/1e293b/ef4444?text=Monza" alt="Monza Track"><div class="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded-md text-sm font-bold animate-pulse">LIVE</div></div><div class="p-4"><h4 class="text-xl font-bold text-white">GT World Series - Monza</h4><p class="text-gray-400">Host: SuperGT_Fan</p><div class="flex justify-between items-center mt-4"><div><p class="text-sm">Iscrizione: <span class="font-bold text-green-400">5 €</span></p><p class="text-sm">Piloti: <span class="font-bold text-white">16 / 16</span></p></div><a href="#" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center"><i data-lucide="twitch" class="w-5 h-5 mr-2"></i>Guarda</a></div></div></div>
-                    </div>
-                </div>
-                
-                 <div id="page-mini-game" class="page hidden">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div class="lg:col-span-2 info-card p-6 rounded-lg flex flex-col">
-                            <h3 class="text-2xl font-bold text-white mb-2">Reaction Time Challenge</h3>
-                            <p class="text-gray-400 mb-4">Metti alla prova i tuoi riflessi e guadagna Skulls! Clicca i bersagli il più velocemente possibile per scalare la classifica.</p>
-                            <!-- INIZIO MODIFICA UI GIOCO -->
-                            <div class="flex justify-between items-center mb-2 text-lg">
-                                <div id="game-level-display">Livello: 1</div>
-                                <div id="game-score-display">Punteggio: 0</div>
-                                <div id="game-misses-display">Errori: 0 / 3</div>
-                            </div>
-                            <!-- FINE MODIFICA UI GIOCO -->
-                            <div id="reaction-game-area" class="relative w-full flex-grow bg-gray-900/50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-700 min-h-[300px] sm:min-h-[400px]">
-                                <p id="reaction-game-message" class="text-xl text-center text-gray-400 p-4">Clicca 'Start' per iniziare</p>
-                                <div id="reaction-target" class="hidden"></div>
-                            </div>
-                            <button id="start-reaction-game" class="tool-btn w-full mt-4 py-3 text-lg font-bold rounded-lg">Start Gioco</button>
-                        </div>
-                        <div class="info-card p-6 rounded-lg">
-                            <h3 class="text-xl font-bold text-white mb-4">Classifica</h3>
-                             <table class="w-full text-sm text-left text-gray-400">
-                                <thead class="text-xs text-gray-400 uppercase bg-gray-700/50"><tr><th scope="col" class="px-6 py-3">Pos.</th><th scope="col" class="px-6 py-3">Pilota</th><th scope="col" class="px-6 py-3">Punteggio</th></tr></thead>
-                                <tbody id="reaction-leaderboard"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+            useEffect(() => {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (SpeechRecognition) {
+                    const recognition = new SpeechRecognition();
+                    recognition.lang = 'it-IT'; recognition.continuous = handsFree; recognition.interimResults = false;
+                    recognition.onstart = () => setIsListening(true);
+                    recognition.onend = () => { setIsListening(false); if (handsFree && !isGenerating) { try { recognition.start(); } catch(e) {} } };
+                    recognition.onerror = (e) => { if (handsFree && e.error !== 'aborted' && !isGenerating) { setTimeout(() => { try { recognition.start(); } catch(err){} }, 1000); } else { setIsListening(false); } };
+                    recognition.onresult = (event) => {
+                        const transcript = event.results[event.resultIndex][0].transcript.toLowerCase();
+                        if (handsFree) {
+                            if (transcript.includes("kyra")) {
+                                const command = transcript.substring(transcript.indexOf("kyra") + 4).trim();
+                                setInputText(transcript); sendMessageToKyra(command.length > 2 ? command : "sono qui");
+                            }
+                        } else { setInputText(transcript); sendMessageToKyra(transcript); recognition.stop(); }
+                    };
+                    recognitionRef.current = recognition;
+                }
+                return () => recognitionRef.current?.abort();
+            }, [handsFree, isGenerating]);
 
-                <div id="page-create-race" class="page hidden">
-                     <div class="info-card p-6 md:p-8 rounded-lg">
-                        <form class="space-y-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div><label for="race-title" class="block mb-2 text-sm font-medium text-gray-400">Titolo Gara *</label><input type="text" id="race-title" class="w-full tool-input rounded-lg p-2.5 text-white" placeholder="Es. Sunday Cup"></div>
-                                <div><label for="race-track" class="block mb-2 text-sm font-medium text-gray-400">Circuito *</label><select id="race-track" class="w-full tool-input rounded-lg p-2.5 text-white"><option>Seleziona circuito</option><option>Monza</option><option>Spa-Francorchamps</option><option>Nurburgring GP</option></select></div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div><label for="buy-in-type" class="block mb-2 text-sm font-medium text-gray-400">Tipo Buy-in *</label><select id="buy-in-type" class="w-full tool-input rounded-lg p-2.5 text-white"><option value="skulls">Skulls</option><option value="real">Euro (€)</option></select></div>
-                                <div><label for="buy-in-amount" class="block mb-2 text-sm font-medium text-gray-400">Importo Buy-in *</label><input type="number" id="buy-in-amount" min="0" class="w-full tool-input rounded-lg p-2.5 text-white" placeholder="Min. 2€"></div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div><label for="min-participants" class="block mb-2 text-sm font-medium text-gray-400">Min. Partecipanti *</label><input type="number" id="min-participants" min="2" max="16" value="2" class="w-full tool-input rounded-lg p-2.5 text-white"></div>
-                                <div><label for="max-participants" class="block mb-2 text-sm font-medium text-gray-400">Max Partecipanti *</label><input type="number" id="max-participants" min="2" max="16" value="16" class="w-full tool-input rounded-lg p-2.5 text-white"></div>
-                            </div>
-                             <p class="text-xs text-gray-500 -mt-4">Ricorda di abbassare il numero massimo se prevedi di avere staff (cronista, giudice, ecc.)</p>
-                            <fieldset>
-                                <legend class="block mb-2 text-sm font-medium text-gray-400">Distribuzione Premi</legend>
-                                <div id="prize-distribution-container" class="space-y-4"></div>
-                                <div class="flex justify-between items-center mt-4">
-                                    <button type="button" id="add-prize-btn" class="text-sm bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Aggiungi Premiato</button>
-                                    <p class="text-sm text-gray-400">Totale: <span id="prize-total">0</span>%</p>
-                                </div>
-                            </fieldset>
-                            <div class="text-center pt-4"><button type="submit" class="form-submit-btn text-white font-bold py-3 px-8 rounded-lg text-lg">Crea Gara</button></div>
-                        </form>
-                    </div>
-                </div>
+            const toggleVoiceInput = () => { if (isListening) { setHandsFree(false); recognitionRef.current?.stop(); } else { setInputText(''); try { recognitionRef.current?.start(); } catch(e) {} } };
+            const toggleHandsFree = () => { setHandsFree(!handsFree); if (!handsFree) { setInputText(''); try { recognitionRef.current?.start(); } catch(e) {} } else { recognitionRef.current?.stop(); } };
+            const handleFileSelect = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => setAttachment({ type: 'image', data: event.target.result, name: file.name }); reader.readAsDataURL(file); e.target.value = null; };
+            const sendAction = (type, action, payload = {}) => { fetch(`${serverUrl}/api/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, action, ...payload }) }).catch(e => console.error("Offline")); };
 
-                <div id="page-extra-services" class="page hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div class="info-card p-6 rounded-lg text-center"><i data-lucide="mic" class="w-12 h-12 mx-auto text-cyan-400 mb-4"></i><h4 class="text-xl font-bold text-white mb-2">Telecronaca Pro</h4><p class="text-gray-400 mb-4">Un commentatore professionista per la tua gara.</p><p class="text-lg font-bold text-cyan-400">1200 Skulls / ora</p><button class="mt-4 w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Acquista</button></div>
-                        <div class="info-card p-6 rounded-lg text-center"><i data-lucide="video" class="w-12 h-12 mx-auto text-cyan-400 mb-4"></i><h4 class="text-xl font-bold text-white mb-2">Highlights Video</h4><p class="text-gray-400 mb-4">Un montaggio video dei momenti migliori della gara.</p><p class="text-lg font-bold text-cyan-400">2000 Skulls / gara</p><button class="mt-4 w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Acquista</button></div>
-                        <div class="info-card p-6 rounded-lg text-center"><i data-lucide="user-check" class="w-12 h-12 mx-auto text-cyan-400 mb-4"></i><h4 class="text-xl font-bold text-white mb-2">Coaching Personale</h4><p class="text-gray-400 mb-4">Un pilota esperto analizza il tuo replay e ti dà consigli.</p><p class="text-lg font-bold text-cyan-400">3500 Skulls / ora</p><button class="mt-4 w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Acquista</button></div>
-                    </div>
-                </div>
-                
-                <div id="page-rules" class="page hidden">
-                    <div class="space-y-8"><div class="info-card p-6 md:p-8 rounded-lg"><h3 class="text-2xl font-bold text-white mb-4 flex items-center"><i data-lucide="coins" class="mr-3 text-cyan-400"></i>Utilizzo Skulls & Wallet</h3><p class="text-gray-400">In Sim is Real hai due portafogli:</p><ul class="list-disc list-inside mt-4 space-y-2 text-gray-300"><li><span class="font-bold text-white">Wallet Reale (€):</span> Contiene i fondi che depositi e che vinci. Questi fondi sono prelevabili in qualsiasi momento.</li><li><span class="font-bold text-white">Wallet Skulls (Bonus):</span> Gli Skulls sono la nostra valuta virtuale. Ricevi 1000 Skulls alla registrazione e un bonus settimanale. <span class="text-red-400 font-semibold">Non sono prelevabili</span>, ma puoi usarli per iscriverti a gare speciali, acquistare servizi o come contributo per le gare a soldi (se l'host lo permette).</li></ul></div><div class="info-card p-6 md:p-8 rounded-lg"> <h3 class="text-2xl font-bold text-white mb-4 flex items-center"><i data-lucide="shield-ban" class="mr-3 text-red-400"></i>Sistema Penalità</h3><ul class="space-y-4"> <li class="flex items-start"><span class="bg-red-500/20 text-red-400 font-bold rounded-full h-8 w-8 flex items-center justify-center mr-4 flex-shrink-0">1</span><div><h4 class="font-bold text-white">Prima Infrazione</h4><p class="text-gray-400">Squalifica dalla gara. La quota di partecipazione viene trattenuta e aggiunta al montepremi.</p></div></li><li class="flex items-start"><span class="bg-red-500/20 text-red-400 font-bold rounded-full h-8 w-8 flex items-center justify-center mr-4 flex-shrink-0">2</span><div><h4 class="font-bold text-white">Seconda Infrazione</h4><p class="text-gray-400">Squalifica dalla gara e multa aggiuntiva pari al 50% della quota di iscrizione.</p></div></li><li class="flex items-start"><span class="bg-red-500/20 text-red-400 font-bold rounded-full h-8 w-8 flex items-center justify-center mr-4 flex-shrink-0">3</span><div><h4 class="font-bold text-white">Terza Infrazione</h4><p class="text-gray-400">Squalifica dalla piattaforma per 24-48 ore, con blocco totale dell'account per la durata della sospensione.</p></div></li></ul></div><div class="info-card p-6 md:p-8 rounded-lg"><h3 class="text-2xl font-bold text-white mb-4 flex items-center"><i data-lucide="wifi-off" class="mr-3 text-yellow-400"></i>Problemi Tecnici</h3><h4 class="font-bold text-white text-lg">Disconnessioni</h4><p class="text-gray-400 mt-2">In caso di disconnessione involontaria durante una gara, verrà rimborsata la quota di partecipazione versata. La commissione della piattaforma ("fee") non è rimborsabile.</p></div></div>
-                </div>
-                
-                <div id="page-car-setup" class="page hidden">
-                    <div class="space-y-8">
-                        <!-- Editor Principale -->
-                        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                            <div class="xl:col-span-1 flex flex-col gap-6">
-                                <div class="info-card p-6 rounded-lg">
-                                    <h3 class="text-2xl font-bold text-white mb-4">GT7 Setup Manager</h3>
-                                    <div class="space-y-4">
-                                        <div class="relative">
-                                            <input type="text" id="car-input" placeholder="🚗 Seleziona Auto..." class="w-full p-3 rounded-lg tool-input">
-                                            <div id="car-suggestions" class="suggestions hidden w-full"></div>
-                                        </div>
-                                        <div class="relative">
-                                            <input type="text" id="track-input" placeholder="🏁 Seleziona Tracciato..." class="w-full p-3 rounded-lg tool-input">
-                                            <div id="track-suggestions" class="suggestions hidden w-full"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="info-card p-6 rounded-lg">
-                                    <h3 class="text-xl font-bold text-white mb-4">ℹ️ Info Setup</h3>
-                                    <div class="space-y-3 text-sm">
-                                        <p><strong>Auto:</strong> <span id="info-car" class="text-gray-400">Nessuna selezione</span></p>
-                                        <p><strong>Potenza:</strong> <span id="info-power" class="text-gray-400">- HP</span></p>
-                                        <p><strong>Peso:</strong> <span id="info-weight" class="text-gray-400">- kg</span></p>
-                                        <p><strong>Categoria:</strong> <span id="info-class" class="text-gray-400">-</span></p>
-                                        <hr class="border-gray-700 my-3">
-                                        <p><strong>Tracciato:</strong> <span id="info-track" class="text-gray-400">Nessuna selezione</span></p>
-                                        <div>
-                                            <p class="mb-2"><strong>Condizioni:</strong></p>
-                                            <div class="flex space-x-4">
-                                                <label class="flex items-center"><input type="radio" name="conditions" class="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 focus:ring-red-600 mr-2" checked> Asciutto</label>
-                                                <label class="flex items-center"><input type="radio" name="conditions" class="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 focus:ring-red-600 mr-2"> Bagnato</label>
-                                                <label class="flex items-center"><input type="radio" name="conditions" class="w-4 h-4 text-red-600 bg-gray-700 border-gray-600 focus:ring-red-600 mr-2"> Miste</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="grid grid-cols-3 gap-2 mt-6">
-                                        <button class="tool-btn text-white font-bold py-2 px-2 rounded-lg text-sm flex items-center justify-center"><i data-lucide="save" class="w-4 h-4 mr-1"></i>Salva</button>
-                                        <button class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-2 rounded-lg text-sm flex items-center justify-center"><i data-lucide="folder-open" class="w-4 h-4 mr-1"></i>Carica</button>
-                                        <button class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-2 rounded-lg text-sm flex items-center justify-center"><i data-lucide="rotate-cw" class="w-4 h-4 mr-1"></i>Reset</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="xl:col-span-2 info-card p-6 rounded-lg">
-                                <div class="flex flex-wrap gap-1 mb-4 border-b border-gray-700">
-                                    <button class="tool-tab flex-grow sm:flex-grow-0 active" data-tab="suspension-tab">🔧 Sospensioni</button>
-                                    <button class="tool-tab flex-grow sm:flex-grow-0" data-tab="aero-tab">✈️ Aerodinamica</button>
-                                    <button class="tool-tab flex-grow sm:flex-grow-0" data-tab="brakes-tab">🛑 Freni</button>
-                                    <button class="tool-tab flex-grow sm:flex-grow-0" data-tab="gears-tab">⚙️ Cambio</button>
-                                    <button class="tool-tab flex-grow sm:flex-grow-0" data-tab="tires-tab">🏁 Gomme</button>
-                                    <button class="tool-tab flex-grow sm:flex-grow-0" data-tab="diff-tab">🔄 Differenziale</button>
-                                </div>
-                                
-                                <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                                    <div id="suspension-tab" class="tool-tab-content grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                        <h4 class="md:col-span-2 text-lg font-bold text-red-400">Configurazione Sospensioni</h4>
-                                        <div><label class="block text-sm">Altezza Anteriore <span class="font-bold text-white float-right">100 mm</span></label><input type="range" min="50" max="150" value="100" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Altezza Posteriore <span class="font-bold text-white float-right">100 mm</span></label><input type="range" min="50" max="150" value="100" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Camber Anteriore <span class="font-bold text-white float-right">-2.0 °</span></label><input type="range" min="-5" max="0" step="0.1" value="-2.0" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Camber Posteriore <span class="font-bold text-white float-right">-1.5 °</span></label><input type="range" min="-5" max="0" step="0.1" value="-1.5" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Convergenza Anteriore <span class="font-bold text-white float-right">0.00 °</span></label><input type="range" min="-0.5" max="0.5" step="0.01" value="0.00" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Convergenza Posteriore <span class="font-bold text-white float-right">0.20 °</span></label><input type="range" min="-0.2" max="1" step="0.01" value="0.20" class="w-full slider"></div>
-                                    </div>
-                                    <div id="aero-tab" class="tool-tab-content hidden grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                        <h4 class="md:col-span-2 text-lg font-bold text-red-400">Configurazione Aerodinamica</h4>
-                                        <div><label class="block text-sm">Deportanza Anteriore <span class="font-bold text-white float-right">400</span></label><input type="range" min="100" max="1000" value="400" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Deportanza Posteriore <span class="font-bold text-white float-right">600</span></label><input type="range" min="100" max="1000" value="600" class="w-full slider"></div>
-                                    </div>
-                                    <div id="brakes-tab" class="tool-tab-content hidden grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                        <h4 class="md:col-span-2 text-lg font-bold text-red-400">Configurazione Freni</h4>
-                                        <div><label class="block text-sm">Bilanciamento Freni <span class="font-bold text-white float-right">0</span></label><input type="range" min="-5" max="5" value="0" class="w-full slider"></div>
-                                    </div>
-                                    <div id="gears-tab" class="tool-tab-content hidden grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                        <h4 class="md:col-span-2 text-lg font-bold text-red-400">Configurazione Cambio</h4>
-                                        <div class="md:col-span-2"><label class="block text-sm">Velocità Massima <span class="font-bold text-white float-right">300 km/h</span></label><input type="range" min="200" max="400" value="300" class="w-full slider"></div>
-                                        <div><label class="block text-sm">1a Marcia <span class="font-bold text-white float-right">3.200</span></label><input type="range" min="1" max="5" step="0.001" value="3.2" class="w-full slider"></div>
-                                        <div><label class="block text-sm">2a Marcia <span class="font-bold text-white float-right">2.100</span></label><input type="range" min="1" max="4" step="0.001" value="2.1" class="w-full slider"></div>
-                                        <div><label class="block text-sm">3a Marcia <span class="font-bold text-white float-right">1.600</span></label><input type="range" min="0.8" max="3" step="0.001" value="1.6" class="w-full slider"></div>
-                                        <div><label class="block text-sm">4a Marcia <span class="font-bold text-white float-right">1.200</span></label><input type="range" min="0.7" max="2" step="0.001" value="1.2" class="w-full slider"></div>
-                                        <div><label class="block text-sm">5a Marcia <span class="font-bold text-white float-right">1.000</span></label><input type="range" min="0.6" max="1.8" step="0.001" value="1.0" class="w-full slider"></div>
-                                        <div><label class="block text-sm">6a Marcia <span class="font-bold text-white float-right">0.800</span></label><input type="range" min="0.5" max="1.5" step="0.001" value="0.8" class="w-full slider"></div>
-                                        <div class="md:col-span-2"><label class="block text-sm">Finale <span class="font-bold text-white float-right">3.500</span></label><input type="range" min="2" max="6" step="0.001" value="3.5" class="w-full slider"></div>
-                                    </div>
-                                    <div id="tires-tab" class="tool-tab-content hidden grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                        <h4 class="md:col-span-2 text-lg font-bold text-red-400">Configurazione Gomme</h4>
-                                        <div><label class="block text-sm">Pressione Ant. Sinistra <span class="font-bold text-white float-right">200 kPa</span></label><input type="range" min="150" max="250" value="200" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Pressione Ant. Destra <span class="font-bold text-white float-right">200 kPa</span></label><input type="range" min="150" max="250" value="200" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Pressione Post. Sinistra <span class="font-bold text-white float-right">190 kPa</span></label><input type="range" min="150" max="250" value="190" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Pressione Post. Destra <span class="font-bold text-white float-right">190 kPa</span></label><input type="range" min="150" max="250" value="190" class="w-full slider"></div>
-                                    </div>
-                                    <div id="diff-tab" class="tool-tab-content hidden grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                        <h4 class="md:col-span-2 text-lg font-bold text-red-400">Configurazione Differenziale</h4>
-                                        <div><label class="block text-sm">Coppia Iniziale <span class="font-bold text-white float-right">10</span></label><input type="range" min="5" max="60" value="10" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Sens. Accelerazione <span class="font-bold text-white float-right">20</span></label><input type="range" min="5" max="60" value="20" class="w-full slider"></div>
-                                        <div><label class="block text-sm">Sens. Frenata <span class="font-bold text-white float-right">40</span></label><input type="range" min="5" max="60" value="40" class="w-full slider"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="info-card p-6 rounded-lg">
-                            <h3 class="text-2xl font-bold text-white mb-4">📚 Libreria Setup</h3>
-                            <div class="flex flex-col md:flex-row gap-4 mb-4">
-                                <input type="text" placeholder="🔍 Cerca per auto o tracciato..." class="w-full md:w-1/3 tool-input rounded-lg">
-                                <select class="w-full md:w-1/3 tool-select rounded-lg"><option>Tutte le auto</option></select>
-                                <select class="w-full md:w-1/3 tool-select rounded-lg"><option>Tutti i tracciati</option></select>
-                            </div>
-                            <div class="bg-gray-900/50 rounded-lg p-4 flex justify-between items-center">
-                                <div>
-                                    <h4 class="font-bold text-white">🏎️ Setup di Esempio</h4>
-                                    <p class="text-sm text-gray-400">Auto: Porsche 911 GT3 RS / Tracciato: Nürburgring</p>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Carica</button>
-                                    <button class="bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg text-sm">Elimina</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="info-card p-6 rounded-lg">
-                                <h3 class="text-2xl font-bold text-white mb-4">💡 Tips & Guide</h3>
-                                <div class="space-y-3 text-sm">
-                                    <p><strong>🔧 Sospensioni:</strong> Una sospensione più bassa migliora la stabilità ma può causare problemi sui cordoli.</p>
-                                    <p><strong>✈️ Aerodinamica:</strong> Più deportanza significa più grip ma anche più resistenza aerodinamica.</p>
-                                    <p><strong>🛑 Freni:</strong> Il bilanciamento freni va regolato in base alle caratteristiche del tracciato.</p>
-                                    <p><strong>🏁 Gomme:</strong> La pressione delle gomme influisce su grip, usura e temperatura.</p>
-                                </div>
-                            </div>
-                            <div class="info-card p-6 rounded-lg">
-                                <h3 class="text-2xl font-bold text-white mb-4">👤 Profilo</h3>
-                                <div class="space-y-3 text-sm">
-                                    <p><strong>Setup Salvati:</strong> <span class="font-bold text-white">0</span></p>
-                                    <p><strong>Auto Preferita:</strong> <span class="font-bold text-white">Nessuna</span></p>
-                                    <p><strong>Tracciato Preferito:</strong> <span class="font-bold text-white">Nessuno</span></p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="page-mtu-guide" class="page hidden">
-                    <div class="info-card p-6 md:p-8 rounded-lg">
-                        <h3 class="text-2xl font-bold text-white mb-2">Migliora la tua connessione per vincere</h3>
-                        <p class="text-gray-400 mb-6">Questa guida ti aiuterà a trovare il valore MTU (Maximum Transmission Unit) ottimale per la tua console (PS4/PS5). Un MTU corretto può ridurre lag, disconnessioni e migliorare la stabilità della tua esperienza di gioco online.</p>
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                            <div class="space-y-6">
-                                <div>
-                                    <h3 class="text-xl font-bold text-white mb-4">Quale Valore Scegliere?</h3>
-                                    <div class="h-64"><canvas id="mtuChart"></canvas></div>
-                                    <div id="mtu-description" class="mt-4 text-center bg-gray-900/50 p-4 rounded-lg min-h-[80px] flex items-center justify-center"><p>Clicca una barra per dettagli.</p></div>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-bold text-white mb-4">Come Impostarlo</h3>
-                                    <div class="flex justify-center items-center space-x-4 mb-4">
-                                        <button id="btn-ps5" class="flex-1 py-2 px-4 text-sm font-semibold rounded-lg transition-all duration-300">PS5</button>
-                                        <button id="btn-ps4" class="flex-1 py-2 px-4 text-sm font-semibold rounded-lg transition-all duration-300">PS4</button>
-                                    </div>
-                                    <div id="guide-ps5" class="space-y-2 text-sm">
-                                        <p class="step-card p-3 rounded-md">1. Impostazioni > Rete > Impostazioni > Configura connessione Internet</p>
-                                        <p class="step-card p-3 rounded-md">2. Seleziona la tua rete > Impostazioni avanzate</p>
-                                        <p class="step-card p-3 rounded-md">3. Impostazioni MTU > Manuale > Inserisci valore</p>
-                                    </div>
-                                    <div id="guide-ps4" class="hidden space-y-2 text-sm">
-                                        <p class="step-card p-3 rounded-md">1. Impostazioni > Rete > Configura connessione Internet</p>
-                                        <p class="step-card p-3 rounded-md">2. Scegli Wi-Fi/LAN > Personalizzato</p>
-                                        <p class="step-card p-3 rounded-md">3. Prosegui fino a Impostazioni MTU > Manuale > Inserisci valore</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="bg-gray-900/50 p-6 rounded-lg border border-red-500/50">
-                                <h3 class="text-xl font-bold text-white mb-4 flex items-center"><i data-lucide="brain-circuit" class="mr-2 text-red-400"></i>Assistente AI</h3>
-                                <p class="text-sm text-gray-400 mb-4">Fornisci i dettagli della tua connessione per ricevere un consiglio MTU personalizzato.</p>
-                                <form id="advisor-form" class="space-y-4">
-                                    <select id="connection-type" class="w-full p-2 rounded-lg tool-select"><option>Fibra Ottica</option><option>ADSL/VDSL</option><option>4G/5G Mobile</option></select>
-                                    <input type="text" id="games" placeholder="Giochi principali (es. GT7, F1)" class="w-full p-2 rounded-lg tool-input">
-                                    <select id="problems" class="w-full p-2 rounded-lg tool-select"><option>Disconnessioni</option><option>Lag Spikes</option><option>Chat Vocale instabile</option></select>
-                                    <button type="submit" id="get-advice-btn" class="w-full gemini-btn text-white font-bold py-2 px-4 rounded-lg">Ottieni Consiglio AI</button>
-                                </form>
-                                <div id="gemini-result" class="mt-4 text-center hidden"><div class="loader mx-auto"></div><div id="gemini-content" class="bg-gray-800 p-4 rounded-lg"></div></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="page-leaderboards" class="page hidden">
-                    <div class="info-card p-6 md:p-8 rounded-lg">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-xl font-bold text-white">Top Piloti - Rating Globale</h3>
-                            <select class="tool-select rounded-lg"><option>Stagione Corrente</option></select>
-                        </div>
-                        <div class="divide-y divide-gray-700">
-                           <div class="flex items-center py-3"><span class="w-10 text-lg font-bold text-yellow-400">1°</span><img src="https://placehold.co/40x40/000000/ffffff?text=V" class="rounded-full mr-4"><div class="flex-grow"><p class="font-semibold text-white">Veloce_Vincenzo</p><p class="text-xs text-gray-400">GT World Champion</p></div><span class="font-bold text-green-400">2850 pts</span></div>
-                           <div class="flex items-center py-3"><span class="w-10 text-lg font-bold text-gray-400">2°</span><img src="https://placehold.co/40x40/000000/ffffff?text=S" class="rounded-full mr-4"><div class="flex-grow"><p class="font-semibold text-white">Speedy_Sara</p><p class="text-xs text-gray-400">Endurance Master</p></div><span class="font-bold text-green-400">2790 pts</span></div>
-                           <div class="flex items-center py-3"><span class="w-10 text-lg font-bold text-orange-400">3°</span><img src="https://placehold.co/40x40/000000/ffffff?text=M" class="rounded-full mr-4"><div class="flex-grow"><p class="font-semibold text-white">Marco_Missile</p><p class="text-xs text-gray-400">Hotlap Hero</p></div><span class="font-bold text-green-400">2750 pts</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div id="auth-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
-                    <div class="modal-backdrop fixed inset-0"></div>
-                    <div class="info-card w-full max-w-md p-8 rounded-lg z-10 relative">
-                        <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
-                        <h3 id="modal-title" class="text-2xl font-bold text-white mb-6 text-center">Accedi</h3>
-                        <form id="auth-form" class="space-y-4">
-                            <div><label for="email" class="block mb-2 text-sm font-medium text-gray-400">Email</label><input type="email" id="email" class="w-full tool-input rounded-lg p-2.5 text-white focus:ring-red-500 focus:border-red-500" placeholder="tu@email.com" autocomplete="email" required></div>
-                            <div><label for="password" class="block mb-2 text-sm font-medium text-gray-400">Password</label><input type="password" id="password" class="w-full tool-input rounded-lg p-2.5 text-white focus:ring-red-500 focus:border-red-500" placeholder="••••••••" autocomplete="current-password" required></div>
-                            <div id="username-field" class="hidden"><label for="username" class="block mb-2 text-sm font-medium text-gray-400">Username</label><input type="text" id="username" class="w-full tool-input rounded-lg p-2.5 text-white focus:ring-red-500 focus:border-red-500" placeholder="IlTuoNomePilota" autocomplete="username"></div>
-                            <button id="auth-submit-btn" type="submit" class="w-full form-submit-btn text-white font-bold py-3 px-8 rounded-lg text-lg mt-6 flex items-center justify-center">
-                                <span class="btn-text">Accedi</span>
-                                <span class="loader hidden ml-3"></span>
-                            </button>
-                             <div id="auth-switch" class="text-center text-sm mt-4 text-gray-400"></div>
-                        </form>
-                    </div>
-                </div>
-                <div id="chat-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
-                    <div class="modal-backdrop fixed inset-0"></div>
-                    <div class="info-card w-full max-w-lg p-0 rounded-lg z-10 relative flex flex-col" style="height: 80vh; max-height: 600px;">
-                        <div class="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
-                            <h3 id="chat-title" class="text-lg font-bold text-white">Chat Gara</h3>
-                            <button id="chat-close-btn" class="text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
-                        </div>
-                        <div id="chat-messages" class="flex-grow p-4 overflow-y-auto"></div>
-                        <div class="p-4 border-t border-gray-700 flex space-x-2 flex-shrink-0">
-                            <input type="text" id="chat-input" placeholder="Scrivi un messaggio..." class="flex-grow tool-input rounded-lg p-2.5 text-white">
-                            <button id="chat-send-btn" class="bg-red-600 hover:bg-red-700 text-white p-2.5 rounded-lg"><i data-lucide="send"></i></button>
-                        </div>
-                    </div>
-                </div>
-                <div id="notification-area"></div>
-            </div>
-        </main>
-    </div>
-    <script>
-        // --- START DATABASE AUTO ---
-        const carsDB = [
-            "Abarth 1500 Biposto Bertone B.A.T 1 '52", "Abarth 500 '09", "Abarth 595 SS '70", "AFEELA 1 '26", "AFEELA Prototype 2024", "Alfa Romeo 155 2.5 V6 TI '93", "Alfa Romeo 4C '14", "Alfa Romeo 4C Gr.3", "Alfa Romeo 4C Gr.3 Road Car", "Alfa Romeo 4C Gr.4", "Alfa Romeo 8C 2900B Touring Berlinetta '38", "Alfa Romeo 8C Competizione '08", "Alfa Romeo GIULIA TZ2 carrozzata da ZAGATO '65", "Alfa Romeo Giulia GTAm '20", "Alfa Romeo Giulia Sprint GT Veloce '67", "Alfa Romeo MiTo '09", "Alpine A110 '17", "Alpine A110 '72", "Alpine A220 Race Car '68", "Alpine VGT", "Alpine VGT '17", "Alpine VGT Race", "AMG 300 SEL 6.8 AMG '71", "AMG A 45 AMG '13", "AMG Mercedes-AMG C 63 S '15", "AMG Mercedes-AMG GT Black Series '20", "AMG Mercedes-AMG GT R '17", "AMG Mercedes-AMG GT S '15", "AMG Mercedes-AMG GT Safety Car", "AMG Mercedes-AMG GT3 '16", "AMG Mercedes-AMG GT3 '20", "AMG Mercedes-Benz AMG VGT", "AMG Mercedes-Benz AMG VGT Racing Series", "AMG SLS AMG '10", "AMG SLS AMG GT3 '11", "AMG SLS AMG Gr.4", "Amuse NISMO 380RS Super Leggera", "Amuse S2000 GT1 Turbo", "Aston Martin DB11 '16", "Aston Martin DB3S '53", "Aston Martin DB5 '64", "Aston Martin DBR9 GT1 '10", "Aston Martin DP-100 VGT", "Aston Martin One-77 '11", "Aston Martin V12 Vantage GT3 '12", "Aston Martin V8 Vantage Gr.4", "Aston Martin V8 Vantage S '15", "Aston Martin Valkyrie '21", "Aston Martin Vantage '18", "Aston Martin Vulcan '16", "Audi VGT", "Audi e-tron VGT", "Audi R18 '16", "Audi R18 TDI '11", "Audi R8 4.2 '07", "Audi R8 Coupé V10 plus '16", "Audi R8 LMS '15", "Audi R8 LMS Evo '19", "Audi RS 5 Turbo DTM '19", "Audi Sport quattro S1 Pikes Peak '87", "Audi TT Coupé 3.2 quattro '03", "Audi TT Cup '16", "Audi TTS Coupé '09", "Audi TTS Coupé '14", "Autobianchi A112 Abarth '85", "BAC Mono '16", "BMW 3.0 CSL '71", "BMW 3.0 CSL '73", "BMW VGT", "BMW M2 Competition '18", "BMW M3 '03", "BMW M3 '07", "BMW M3 '89", "BMW M3 '97", "BMW M3 GT '11", "BMW M3 Sport Evolution '89", "BMW M4 '14", "BMW M4 Gr.4", "BMW M4 Safety Car", "BMW M6 GT3 Endurance Model '16", "BMW M6 GT3 Sprint Model '16", "BMW McLaren F1 GTR Race Car '97", "BMW Z4 3.0i '03", "BMW Z4 GT3 '11", "BMW Z8 '01", "BMW i3 '15", "Bugatti VGT", "Bugatti VGT (Gr.1)", "Bugatti Chiron '16", "Bugatti Veyron 16.4 '13", "Bugatti Veyron Gr.4", "BVLGARI Aluminium VGT", "Chaparral 2J '70", "Chaparral 2X VGT", "Chevrolet Camaro SS '16", "Chevrolet Camaro Z28 '69", "Chevrolet Camaro ZL1 1LE Package '18", "Chevrolet Chevelle SS 454 '70", "Chevrolet Corvette (C1) '58", "Chevrolet Corvette (C2) '63", "Chevrolet Corvette C7 '14", "Chevrolet Corvette C7 Gr.3", "Chevrolet Corvette C7 Gr.3 Road Car", "Chevrolet Corvette C7 Gr.4", "Chevrolet Corvette C7 ZR1 '19", "Chevrolet Corvette C8 '20", "Chevrolet Corvette CX Concept '25", "Chevrolet Corvette CX.R VGT Concept", "Chevrolet Corvette Convertible (C3) '69", "Chevrolet Corvette Stingray (C3) '69", "Chevrolet Corvette Stingray Racer Concept '59", "Chevrolet Corvette Z06 (C5) '01", "Chevrolet Corvette ZR-1 (C4) '89", "Chevrolet Corvette ZR1 (C6) '09", "Chris Holstrom Concepts CHC 1967 Chevy Nova", "Citroën BX 19 TRS '87", "Citroën DS 21 Pallas '70", "Citroën GT by Citroën Gr.4", "Citroën GT by Citroën Race Car (Gr.3)", "Citroën GT by Citroën Road Car", "Daihatsu COPEN RJ VGT", "Daihatsu Copen '02", "De Tomaso Mangusta '69", "De Tomaso Pantera '71", "DMC DeLorean S2 '04", "Dodge Challenger R/T '70", "Dodge Challenger SRT Demon '18", "Dodge Charger R/T 426 Hemi '68", "Dodge Charger SRT Hellcat '15", "Dodge Charger SRT Hellcat Safety Car", "Dodge SRT Tomahawk GTS-R VGT", "Dodge SRT Tomahawk S VGT", "Dodge SRT Tomahawk VGT (Gr.1)", "Dodge SRT Tomahawk X VGT", "Dodge Super Bee '70", "Dodge Viper GTS '02", "Dodge Viper GTS '13", "Dodge Viper Gr.4", "Dodge Viper SRT GT3-R '15", "Dodge Viper SRT10 Coupe '06", "DS AUTOMOBILES DS 3 Racing '11", "Eckert's Rod & Custom Mach Forty", "Ferrari 250 GT Berlinetta passo corto '61", "Ferrari 250 GTO '62", "Ferrari 308 GTB '75", "Ferrari 330 P4 '67", "Ferrari 365 GTB4 '71", "Ferrari 430 Scuderia '07", "Ferrari 458 Italia '09", "Ferrari 458 Italia GT3 '13", "Ferrari 458 Italia Gr.4", "Ferrari 500 Mondial Pinin Farina Coupe '54", "Ferrari 512 BB '76", "Ferrari 812 Superfast '17", "Ferrari Dino 246 GT '71", "Ferrari Enzo Ferrari '02", "Ferrari F12berlinetta '12", "Ferrari F40 '92", "Ferrari F430 '06", "Ferrari F50 '95", "Ferrari F8 Tributo '19", "Ferrari FXX K '14", "Ferrari VGT", "Ferrari GTO '84", "Ferrari LaFerrari '13", "Ferrari Testarossa '91", "FIAT 500 1.2 8V Lounge SS '08", "FIAT 500 F '68", "Ford Escort RS Cosworth '92", "Ford F-150 SVT Raptor '11", "Ford Focus Gr.B Rally Car", "Ford Focus RS '18", "Ford Focus ST '15", "Ford GT '06", "Ford GT '17", "Ford GT LM Race Car Spec II", "Ford GT LM Spec II Test Car", "Ford GT Race Car '18", "Ford Roadster", "Ford GT40 Mark I '66", "Ford Mark IV Race Car '67", "Ford Mustang Boss 429 '69", "Ford Mustang GT '15", "Ford Mustang Gr.3", "Ford Mustang Gr.3 Road Car", "Ford Mustang Gr.4", "Ford Mustang Gr.B Rally Car", "Ford Mustang Mach 1 '71", "Ford Shelby GT350R '16", "Ford Sierra RS 500 Cosworth '87", "Genesis G70 3.3T AWD P.Package '22", "Genesis G70 GR4", "Genesis X GR3", "Genesis X Gran Berlinetta VGT Concept", "Genesis X Gran Racer VGT Concept", "Gran Turismo F1500T-A", "Gran Turismo F3500-A", "Gran Turismo Racing Kart 125 Shifter", "Gran Turismo Red Bull X2014 Junior", "Gran Turismo Red Bull X2014 Standard", "Gran Turismo Red Bull X2019 Competition", "GReddy Fugu Z", "Garage RCR Civic", "Greening Auto Company GAC Maverick", "Honda 2&4 powered by RC213V", "Honda Beat '91", "Honda CR-V e:HEV EX・Black Edition '21", "Honda Civic Si Extra (EF) '87", "Honda Civic SiR･II (EG) '93", "Honda Civic Type R (EK) '97", "Honda Civic Type R (EK) '98", "Honda Civic Type R (EK) Touring Car", "Honda Civic Type R (FK2) '15", "Honda Civic Type R (FL5) '22", "Honda Civic Type R Limited Edition (FK8) '20", "Honda Fit Hybrid '14", "Honda Sports VGT", "Honda Integra Type R (DC2) '95", "Honda Integra Type R (DC2) '98", "Honda N-ONE RS '22", "Honda NSX '17", "Honda NSX CONCEPT-GT '16", "Honda NSX GT500 '00", "Honda NSX GT500 '08", "Honda NSX Gr.3", "Honda NSX Gr.4", "Honda NSX Gr.B Rally Car", "Honda NSX Type R '02", "Honda NSX Type R '92", "Honda RA272 '65", "Honda S2000 '99", "Honda S660 '15", "Honda S800 '66", "Hyundai Genesis Coupe 3.8 '13", "Hyundai Genesis Gr.3", "Hyundai Genesis Gr.4", "Hyundai Genesis Gr.B Rally Car", "Hyundai N 2025 VGT", "Hyundai N 2025 VGT (Gr.1)", "Hyundai IONIQ 5 N '24", "Infiniti CONCEPT VGT", "Italdesign VGT Off-road Mode", "Italdesign VGT Street Mode", "Jaguar D-type '54", "Jaguar E-type Coupé '61", "Jaguar F-type Gr.3", "Jaguar F-type Gr.4", "Jaguar F-type R '14", "Jaguar VGT Coupé", "Jaguar VGT Roadster", "Jaguar VGT SV", "Jaguar XJ13 '66", "Jaguar XJ220 '92", "Jaguar XJR-9 '88", "Jeep Willys MB '45", "KTM X-BOW R '12", "Lamborghini Aventador LP 700-4 '11", "Lamborghini Aventador LP 750-4 SV '15", "Lamborghini Countach 25th Anniversary '88", "Lamborghini Countach LP400 '74", "Lamborghini Diablo GT '00", "Lamborghini Gallardo LP 560-4 '08", "Lamborghini Huracán GT3 '15", "Lamborghini Huracán Gr.4", "Lamborghini Huracán LP 610-4 '15", "Lamborghini V12 VGT", "Lamborghini Miura P400 Bertone Prototype '67", "Lamborghini Murciélago LP 640 '09", "Lamborghini Urus '18", "Lamborghini Veneno '14", "Lancia Delta HF Integrale Evoluzione '91", "Lancia Delta HF Integrale Rally Car '92", "Lancia Stratos '73", "Lexus LC500 '17", "Lexus LF-LC GT VGT", "Lexus LFA '10", "Lexus RC F '14", "Lexus RC F GT3 '17", "Lexus RC F GT3 prototype '16", "Lexus RC F GT500 '16", "Lexus RC F Gr.4", "Lexus SC430 GT500 '08", "Maserati A6GCS/53 Spyder '54", "Maserati GranTurismo S '08", "Maserati MC20 '20", "Maserati Merak SS '80", "Mazda 787B '91", "Mazda Atenza Gr.3", "Mazda Atenza Gr.3 Road Car", "Mazda Atenza Gr.4", "Mazda Atenza Sedan XD L Package '15", "Mazda CX-30 X Smart Edition '21", "Mazda Demio XD Touring '15", "Mazda Eunos Roadster (NA) '89", "Mazda LM55 VGT", "Mazda LM55 VGT (Gr.1)", "Mazda MAZDA3 '19", "Mazda MAZDA3 Gr.4", "Mazda RX-7 GT-X (FC) '90", "Mazda RX-7 Spirit R Type A (FD) '02", "Mazda RX-8 Spirit R '12", "Mazda RX-VISION '15", "Mazda RX-VISION GT3 CONCEPT", "Mazda RX500 '70", "Mazda Roadster NR-A (ND) '22", "Mazda Roadster S (ND) '15", "Mazda Roadster Touring Car", "McLaren 650S '14", "McLaren 650S GT3 '15", "McLaren 650S Gr.4", "McLaren MP4-12C '10", "McLaren MP4/4 '88", "McLaren F1 '94", "McLaren F1 GTR - BMW '95", "McLaren P1 GTR '16", "McLaren VGT", "McLaren VGT (Gr.1)", "Mercedes-Benz 190 E 2.5-16 Evolution II '91", "Mercedes-Benz 300 SL (W194) '52", "Mercedes-Benz 300 SL Coupé '54", "Mercedes-Benz CLK-LM '98", "Mercedes-Benz S Barker Tourer '29", "Mercedes-Benz SLR McLaren '09", "Mercedes-Benz Sauber Mercedes C9 '89", "Mercedes-Benz Unimog Type 411 '62", "Mercedes-Benz W 196 R '55", "MINI Clubman VGT", "MINI Cooper S '05", "MINI Cooper 'S' '65", "Mitsubishi Concept XR-PHEV EVOLUTION VGT", "Mitsubishi GTO Twin Turbo '91", "Mitsubishi Lancer Evolution Final '15", "Mitsubishi Lancer Evolution Final Gr.3", "Mitsubishi Lancer Evolution Final Gr.4", "Mitsubishi Lancer Evolution Final Gr.B Rally Car", "Mitsubishi Lancer Evolution Final Gr.B Road Car", "Mitsubishi Lancer Evolution III GSR '95", "Mitsubishi Lancer Evolution IV GSR '96", "Mitsubishi Lancer Evolution IX MR GSR '06", "Mitsubishi Lancer Evolution V GSR '98", "Mitsubishi Lancer Evolution VI GSR T.M. SCP '99", "Mitsubishi Lancer Evolution VIII MR GSR '04", "Nismo 400R '95", "Nismo R34 GT-R Z-tune '05", "Nissan 180SX Type X '96", "Nissan Fairlady 240ZG (HS30) '71", "Nissan Fairlady Z (Z34) '08", "Nissan Fairlady Z 300ZX TT 2seater '89", "Nissan Fairlady Z 432 '69", "Nissan Fairlady Z Version S (Z33) '07", "Nissan GT-R '17", "Nissan GT-R GT500 '08", "Nissan GT-R GT500 '99", "Nissan GT-R Gr.4", "Nissan GT-R Gr.B Rally Car", "Nissan GT-R LM NISMO '15", "Nissan GT-R NISMO '17", "Nissan GT-R NISMO GT3 '13", "Nissan GT-R NISMO GT3 '18", "Nissan GT-R NISMO GT500 '16", "Nissan GT-R Premium edition T-spec '24", "Nissan GT-R Safety Car", "Nissan CONCEPT 2020 VGT", "Nissan Qashqai Tekna e-Power '22", "Nissan R32 GT-R NISMO '90", "Nissan R32 GT-R V･spec II '94", "Nissan R33 GT-R V･spec '97", "Nissan R34 GT-R V･spec II Nür '02", "Nissan R92CP '92", "Nissan Sileighty '98", "Nissan Silvia K's Aero (S14) '96", "Nissan Silvia K's Dia Selection (S13) '90", "Nissan Silvia K's Type S (S14) '94", "Nissan Silvia Q's (S13) '88", "Nissan Silvia spec-R Aero (S15) '02", "Nissan Silvia spec-R Aero (S15) Touring Car", "Nissan Skyline 2000GT-R (KPGC110) '73", "Nissan Skyline GTS-R (R31) '87", "Nissan Skyline Hard Top 2000GT-R (KPGC10) '70", "Nissan Skyline Super Silhouette '84", "Nissan Z Performance '23", "Pagani Huayra '13", "Pagani Zonda R '09", "Peugeot 2008 Allure '21", "Peugeot 205 GTI '88", "Peugeot 205 Turbo 16 Evolution 2 '86", "Peugeot 208 GTi by Peugeot Sport '14", "Peugeot 908 HDi FAP '10", "Peugeot L500R HYbrid VGT 2017", "Peugeot L750R HYbrid VGT 2017", "Peugeot VGT", "Peugeot VGT (Gr.3)", "Peugeot RCZ GT Line '15", "Peugeot RCZ Gr.3", "Peugeot RCZ Gr.3 Road Car", "Peugeot RCZ Gr.4", "Peugeot RCZ Gr.B Rally Car", "Plymouth Superbird '70", "Plymouth XNR Ghia Roadster '60", "Pontiac Firebird Trans Am '78", "Pontiac GTO 'The Judge '69", "Porsche 356 A/1500 GS Carrera '56", "Porsche 356 A/1500 GS GT Carrera Speedster '56", "Porsche 911 Carrera RS (901) '73", "Porsche 911 Carrera RS (964) '92", "Porsche 911 Carrera RS (993) '95", "Porsche 911 Carrera RS CS (993) '95", "Porsche 911 GT1 Strassenversion '97", "Porsche 911 GT3 (996) '01", "Porsche 911 GT3 (997) '09", "Porsche 911 GT3 RS (991) '16", "Porsche 911 GT3 RS (992) '22", "Porsche 911 RSR (991) '17", "Porsche 911 Turbo (930) '81", "Porsche 911 Turbo S (992) '20", "Porsche 917 LIVING LEGEND", "Porsche 917K '70", "Porsche 918 Spyder '13", "Porsche 919 Hybrid '16", "Porsche 959 '87", "Porsche 962 C '88", "Porsche Carrera GT '04", "Porsche Carrera GTS (904) '64", "Porsche Cayman GT4 '16", "Porsche Cayman GT4 Clubsport '16", "Porsche Mission X '23", "Porsche VGT", "Porsche VGT Spyder", "Porsche Spyder type 550/1500RS '55", "Porsche Taycan Turbo S '19", "Radical SR3 SL '13", "Roadster Shop Rampage", "RE Amemiya FD3S RX-7", "Renault Avantime 3.0 V6 24V '02", "Renault Clio R.S. 220 Trophy '15", "Renault Clio R.S. 220 Trophy '16", "Renault Clio V6 24V '00", "Renault Kangoo 1.4 '01", "Renault Mégane Gr.4", "Renault Mégane R.S. Trophy '11", "Renault Mégane R.S. Trophy Safety Car", "Renault Mégane Trophy '11", "Renault R.S.01 '16", "Renault R.S.01 GT3 '16", "Renault R4 GTL '85", "Renault R5 Turbo '80", "Renault R8 Gordini '66", "RUF CTR3 '07", "RUF RGT 4.2 '16", "Shelby Cobra 427 '66", "Shelby Cobra Daytona Coupe '64", "Shelby G.T.350 '65", "Subaru BRZ Drift Car '17", "Subaru BRZ GT300 '21", "Subaru BRZ S '15", "Subaru BRZ S '21", "Subaru BRZ STI Sport '18", "Subaru Impreza 22B-STi '98", "Subaru Impreza Coupe WRX Type R STi Ver.VI '99", "Subaru Impreza Rally Car '98", "Subaru Impreza Sedan WRX STi '04", "Subaru VIZIV GT VGT", "Subaru WRX Gr.3", "Subaru WRX Gr.4", "Subaru WRX Gr.B Rally Car", "Subaru WRX Gr.B Road Car", "Subaru WRX STI Isle of Man '16", "Subaru WRX STI Type S '14", "Super Formula SF19 / Honda '19", "Super Formula SF19 / Toyota '19", "Super Formula SF23 / Honda '23", "Super Formula SF23 / Toyota '23", "Suzuki Cappuccino '91", "Suzuki Carry KC '12", "Suzuki Jimny Sierra JC '18", "Suzuki Jimny XC '18", "Suzuki VGT", "Suzuki VGT (Gr.3)", "Suzuki Swift Sport '07", "Suzuki Swift Sport '17", "Suzuki Swift Sport Gr.4", "Suzuki V6 Escudo Pikes Peak Special '98", "Tesla Model 3 Performance '23", "Tesla Model S Signature Performance '12", "Toyota 2000GT '67", "Toyota 86 GRMN '16", "Toyota 86 GT '15", "Toyota 86 GT'Limited' '16", "Toyota 86 Gr.4", "Toyota 86 Gr.B Rally Car", "Toyota Alphard Executive Lounge '18", "Toyota Aqua S '11", "Toyota C-HR S '18", "Toyota Celica GT-FOUR (ST205) '94", "Toyota Celica GT-FOUR Rally Car (ST205) '95", "Toyota Corolla Levin 1600GT APEX (AE86) '83", "Toyota Crown Athlete G '13", "Toyota Crown Athlete G Safety Car", "Toyota FT-1", "Toyota FT-1 VGT", "Toyota FT-1 VGT (Gr.3)", "Toyota GR Corolla MORIZO Edition '22", "Toyota GR Supra RZ '19", "Toyota GR Supra RZ '20", "Toyota GR Supra Race Car '19", "Toyota GR Supra Racing Concept '18", "Toyota GR Yaris RZ 'High performance' '20", "Toyota GR010 HYBRID '21", "Toyota GR86 RZ '21", "Toyota GT-One (TS020) '99", "Toyota Hiace Van DX '16", "Toyota Himedic '21", "Toyota MR2 GT-S '97", "Toyota Prius G '09", "Toyota S-FR '15", "Toyota S-FR Racing Concept '16", "Toyota Sports 800 '65", "Toyota Sprinter Trueno 1600GT APEX (AE86) '83", "Toyota Sprinter Trueno 1600GT APEX (S.Shigeno Version)", "Toyota Supra 3.0GT Turbo A '88", "Toyota Supra GT500 '97", "Toyota Supra RZ '97", "Toyota TS030 Hybrid '12", "Toyota TS050 - Hybrid '16", "Toyota Tundra TRD Pro '19", "TVR Tuscan Speed 6 '00", "Volkswagen Beetle Gr.3", "Volkswagen GTI Roadster VGT", "Volkswagen GTI Supersport VGT", "Volkswagen Golf I GTI '83", "Volkswagen Golf VII GTI '14", "Volkswagen ID.R '19", "Volkswagen Polo GTI '14", "Volkswagen Sambabus Typ 2 '62", "Volkswagen Scirocco Gr.4", "Volkswagen Scirocco R '10", "Volkswagen 1200 '66", "Volkswagen GTI VGT (Gr.3)", "Volvo 240 SE Estate '93", "Volvo V40 T5 R-Design '13", "Wicked Fabrication GT 51", "Zagato IsoRivolta Zagato VGT", "Škoda VGT"
-        ];
-        // --- END DATABASE AUTO ---
-    </script>
-    <script>
-        // --- START DATABASE CIRCUITI ---
-        const tracksDB = [
-            "Autodromo Nazionale Monza", "Autodromo Nazionale Monza - No Chicane", "Nürburgring GP", "Nürburgring 24h", "Nürburgring Nordschleife", "Circuit de la Sarthe", "Le Mans - No Chicane", "Brands Hatch GP", "Brands Hatch Indy", "Circuit de Spa-Francorchamps", "Circuit de Spa-Francorchamps 24h", "Suzuka Circuit", "Suzuka Circuit East", "Suzuka Circuit West", "Fuji Speedway", "Fuji Speedway GT", "Laguna Seca Raceway", "WeatherTech Raceway Laguna Seca", "Watkins Glen International", "Watkins Glen Short", "Mount Panorama Motor Racing Circuit", "Tsukuba Circuit", "Red Bull Ring", "Red Bull Ring Short Track", "Interlagos", "Autopolis", "Autopolis Lake", "Road Atlanta", "Goodwood Motor Circuit", "Goodwood Hillclimb", "Daytona International Speedway", "Daytona Road Course", "Willow Springs International Raceway", "Willow Springs Horse Thief Mile", "Willow Springs Streets of Willow", "Kyoto Driving Park", "Kyoto Driving Park Yamagiwa", "Kyoto Driving Park Miyabi", "Deep Forest Raceway", "Deep Forest Raceway - Reverse", "Trial Mountain Circuit", "Trial Mountain - Reverse", "Grand Valley Speedway", "Grand Valley Highway", "Grand Valley East", "Grand Valley - Reverse", "High Speed Ring", "High Speed Ring - Reverse", "Alsace Village", "Alsace Test Course", "Alsace - Reverse", "Sardegna Road Track A", "Sardegna Road Track B", "Sardegna Road Track C", "Sardegna Windmills A", "Sardegna Windmills B", "Sardegna Windmills C", "Sardegna Road Track A - Reverse", "Sardegna Road Track B - Reverse", "Sardegna Road Track C - Reverse", "Sainte-Croix A", "Sainte-Croix B", "Sainte-Croix C", "Sainte-Croix A - Reverse", "Sainte-Croix B - Reverse", "Sainte-Croix C - Reverse", "Colorado Springs Lake", "Colorado Springs Infield A", "Colorado Springs Infield B", "Colorado Springs Short", "Colorado Springs - Reverse", "Special Stage Route X", "Northern Isle Speedway", "Northern Isle Infield A", "Northern Isle Infield B", "Blue Moon Bay Speedway", "Blue Moon Bay Infield A", "Blue Moon Bay Infield B", "Tokyo Expressway - Central", "Tokyo Expressway - Central Clockwise", "Tokyo Expressway - Central Counter Clockwise", "Tokyo Expressway - East", "Tokyo Expressway - East Clockwise", "Tokyo Expressway - East Counter Clockwise", "Tokyo Expressway - South", "Tokyo Expressway - South Clockwise", "Tokyo Expressway - South Counter Clockwise", "Eiger Nordwand", "Eiger Nordwand - Reverse", "Eiger Nordwand - Short Track", "Lake Louise", "Lake Louise - West", "Lake Louise - East", "Lake Louise - Reverse", "Dragon Trail - Seaside", "Dragon Trail - Gardens", "Dragon Trail - Seaside Reverse", "Dragon Trail - Gardens Reverse"
-        ];
-        // --- END DATABASE CIRCUITI ---
-    </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-
-            // App state
-            const userState = {
-                isLoggedIn: false,
-                username: 'Pilota_01',
-                skullsBalance: 1000,
-                realBalance: 0,
-                lastBonus: 0,
-                guestPlayerCount: parseInt(localStorage.getItem('guestPlayerCount')) || 1,
+            const sendMessageToKyra = async (textToProcess) => {
+                if ((!textToProcess.trim() && !attachment) || isGenerating) return;
+                const userMsg = { id: Date.now(), text: textToProcess, sender: 'user', attachment: attachment };
+                setMessages(prev => [...prev, userMsg]); setInputText(''); setAttachment(null); setIsGenerating(true);
+                let prompt = textToProcess;
+                if (activeTab === 'CODICE') prompt = `[Richiesta Codice Termux]: ${textToProcess}`;
+                try {
+                    const res = await fetch(`${serverUrl}/api/command`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: prompt, attachment: userMsg.attachment }) });
+                    const data = await res.json();
+                    if (data.kyra.toLowerCase().includes("apro youtube")) setActiveIframe("https://www.youtube.com/embed?autoplay=1");
+                    if (activeTab === 'CODICE' && data.kyra.includes("```")) { const codeMatch = data.kyra.match(/```[\s\S]*?\n([\s\S]*?)```/); if (codeMatch && codeMatch[1]) setCodeDraft(codeMatch[1]); }
+                    setMessages(prev => [...prev, { id: Date.now()+1, text: data.kyra, sender: 'kyra' }]);
+                    if (activeTab !== 'CHAT' && activeTab !== 'CODICE') setActiveTab('CHAT'); 
+                } catch (e) { console.error(e); } finally { setIsGenerating(false); }
             };
-            
-            initializeAppLogic();
 
-            function initializeAppLogic() {
-                // UI Elements
-                const skullsBalanceSidebarEl = document.getElementById('skulls-balance-sidebar');
-                const realBalanceSidebarEl = document.getElementById('real-balance-sidebar');
-                const userProfileSidebarEl = document.getElementById('user-profile-sidebar');
-                const loginButtonsEl = document.getElementById('login-buttons');
-                const userUsernameSidebarEl = document.getElementById('user-username-sidebar');
-                const pageTitleEl = document.getElementById('page-title');
-                const pageSubtitleEl = document.getElementById('page-subtitle');
-                const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-                const sidebar = document.getElementById('sidebar');
-                // INIZIO MODIFICA HEADER MOBILE
-                const mobilePageTitleEl = document.getElementById('mobile-page-title');
-                const mobilePageSubtitleEl = document.getElementById('mobile-page-subtitle');
-                // FINE MODIFICA HEADER MOBILE
-                
-                function showNotification(message, type = 'info') {
-                    const area = document.getElementById('notification-area');
-                    if (!area) return;
-                    const notification = document.createElement('div');
-                    notification.className = 'notification';
-                    notification.textContent = message;
+            const connectPi4 = () => { setPi4Status('connecting'); setTimeout(() => setPi4Status('online'), 2000); };
+            const TABS = [ { id: 'CHAT', icon: MessageSquare, label: 'Chat' }, { id: 'ROBOT', icon: Gamepad2, label: 'Robot' }, { id: 'APPS', icon: LayoutGrid, label: 'Apps' }, { id: 'CODICE', icon: Terminal, label: 'Codice' }, { id: 'AGENDA', icon: CalendarDays, label: 'Agenda' }, { id: 'MEMORIA', icon: BrainCircuit, label: 'Memoria' } ];
 
-                    const colors = {
-                        success: 'bg-green-500',
-                        error: 'bg-red-500',
-                        info: 'bg-blue-500'
-                    };
-                    notification.classList.add(colors[type]);
-                    
-                    area.appendChild(notification);
-                    
-                    setTimeout(() => notification.classList.add('show'), 10);
-                    setTimeout(() => {
-                        notification.classList.remove('show');
-                        setTimeout(() => notification.remove(), 300);
-                    }, 4000);
-                }
-
-                function updateUserUI() {
-                    if (skullsBalanceSidebarEl) skullsBalanceSidebarEl.textContent = userState.skullsBalance;
-                    if (realBalanceSidebarEl) realBalanceSidebarEl.textContent = `${userState.realBalance.toFixed(2)} €`;
-                    
-                    if (userState.isLoggedIn) {
-                        if (userProfileSidebarEl) userProfileSidebarEl.classList.remove('hidden');
-                        if (loginButtonsEl) loginButtonsEl.classList.add('hidden');
-                        if (userUsernameSidebarEl) userUsernameSidebarEl.textContent = userState.username;
-                        
-                        // Update titles
-                        const dashboardLink = document.getElementById('nav-dashboard');
-                        if (dashboardLink.classList.contains('active')) {
-                           if (pageTitleEl) pageTitleEl.textContent = `Bentornato, ${userState.username}`;
-                           if (mobilePageTitleEl) mobilePageTitleEl.textContent = `Bentornato, ${userState.username}`;
-                           if (pageSubtitleEl) pageSubtitleEl.classList.add('hidden');
-                           if (mobilePageSubtitleEl) mobilePageSubtitleEl.classList.add('hidden');
-                        }
-
-                    } else {
-                        if (userProfileSidebarEl) userProfileSidebarEl.classList.add('hidden');
-                        if (loginButtonsEl) loginButtonsEl.classList.remove('hidden');
-                        // Reset titles
-                        if (pageTitleEl) pageTitleEl.textContent = `Dashboard`;
-                        if (mobilePageTitleEl) mobilePageTitleEl.textContent = 'Dashboard';
-                        if (pageSubtitleEl) pageSubtitleEl.classList.remove('hidden');
-                        if (mobilePageSubtitleEl) mobilePageSubtitleEl.classList.remove('hidden');
-                    }
-                }
-                
-                const navLinks = document.querySelectorAll('.nav-link');
-                const pages = document.querySelectorAll('.page');
-                
-                function switchPage(targetLink) {
-                    if (!targetLink) return;
-                    navLinks.forEach(nav => nav.classList.remove('active'));
-                    targetLink.classList.add('active');
-                    const pageId = 'page-' + targetLink.id.substring(4);
-                    pages.forEach(page => page.classList.add('hidden'));
-                    const targetPage = document.getElementById(pageId);
-                    if (targetPage) targetPage.classList.remove('hidden');
-                    
-                    const pageName = targetLink.querySelector('span').textContent;
-
-                    if (userState.isLoggedIn && targetLink.id === 'nav-dashboard') {
-                        pageTitleEl.textContent = `Bentornato, ${userState.username}`;
-                        mobilePageTitleEl.textContent = `Bentornato, ${userState.username}`;
-                        pageSubtitleEl.classList.add('hidden');
-                        mobilePageSubtitleEl.classList.add('hidden');
-                    } else {
-                        pageTitleEl.textContent = pageName;
-                        mobilePageTitleEl.textContent = pageName;
-                        if(targetLink.id === 'nav-dashboard'){
-                            pageSubtitleEl.classList.remove('hidden');
-                            mobilePageSubtitleEl.classList.remove('hidden');
-                        } else {
-                            pageSubtitleEl.classList.add('hidden');
-                            mobilePageSubtitleEl.classList.add('hidden');
-                        }
-                    }
-
-                    if(sidebar.classList.contains('open')) {
-                        sidebar.classList.remove('open');
-                    }
-                }
-
-                navLinks.forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        switchPage(link);
-                    });
-                });
-                
-                const initialLink = document.getElementById('nav-dashboard');
-                if (initialLink) {
-                     switchPage(initialLink);
-                }
-               
-                if(mobileMenuBtn && sidebar) {
-                    mobileMenuBtn.addEventListener('click', () => {
-                        sidebar.classList.toggle('open');
-                    });
-                }
-
-
-                // Prize distribution logic
-                const addPrizeBtn = document.getElementById('add-prize-btn');
-                const prizeContainer = document.getElementById('prize-distribution-container');
-                const prizeTotalEl = document.getElementById('prize-total');
-                let prizeCount = 0;
-
-                function updatePrizeTotal() {
-                    let total = 0;
-                    if (!prizeContainer) return;
-                    prizeContainer.querySelectorAll('input[type="number"]').forEach(input => {
-                        if(input.name.includes('percentage')) {
-                           total += parseInt(input.value) || 0;
-                        }
-                    });
-                    if (prizeTotalEl) {
-                        prizeTotalEl.textContent = total;
-                        prizeTotalEl.classList.toggle('text-green-400', total === 100);
-                        prizeTotalEl.classList.toggle('text-red-400', total !== 100);
-                    }
-                }
-                
-                if (addPrizeBtn && prizeContainer) {
-                     addPrizeBtn.addEventListener('click', () => {
-                        prizeCount++;
-                        const prizeRow = document.createElement('div');
-                        prizeRow.className = 'grid grid-cols-3 gap-4 items-center';
-                        prizeRow.innerHTML = `
-                            <div>
-                                <label class="block mb-1 text-xs text-gray-500">Posizione</label>
-                                <input type="number" name="prize_pos_${prizeCount}" class="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2 text-white" placeholder="${prizeCount}°">
+            const renderTabContent = () => {
+                switch(activeTab) {
+                    case 'CHAT': return (
+                            <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pb-40 no-scrollbar">
+                                {messages.length === 0 && ( <div className="h-full flex flex-col items-center justify-center opacity-30 text-center space-y-4"><Radio size={80} className="text-blue-500/50" /><h3 className="text-2xl font-black uppercase italic tracking-[0.2em] text-white">Kyra Core</h3></div> )}
+                                {messages.map((msg) => (
+                                    <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[85%] md:max-w-[70%] p-6 rounded-[2rem] shadow-xl relative ${msg.sender === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'glass-panel border border-white/10 text-slate-100 rounded-tl-none'}`}>
+                                            <div className={`absolute -top-3 ${msg.sender === 'user' ? 'right-6' : 'left-6'} text-[9px] font-black uppercase tracking-widest text-slate-400 bg-[#12141c] px-3 py-1 rounded-full border border-white/5`}>{msg.sender === 'user' ? 'Riccardo' : 'Kyra'}</div>
+                                            {msg.attachment && msg.attachment.type === 'image' && ( <div className="mb-4 rounded-xl overflow-hidden border border-white/20 cursor-pointer" onClick={() => setEnlargedImage(msg.attachment.data)}><img src={msg.attachment.data} className="max-w-full h-auto max-h-64 object-cover" /></div> )}
+                                            <p className="text-base font-medium leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {isGenerating && <div className="text-[10px] font-black uppercase text-fuchsia-500 animate-pulse flex items-center gap-2"><div className="w-2 h-2 bg-fuchsia-500 rounded-full"></div> Elaborazione...</div>}
+                                <div ref={chatEndRef} />
                             </div>
-                            <div class="col-span-2">
-                                <label class="block mb-1 text-xs text-gray-500">Percentuale (%)</label>
-                                <input type="number" name="prize_percentage_${prizeCount}" class="w-full bg-gray-900/50 border border-gray-600 rounded-lg p-2 text-white" placeholder="Es. 60">
+                        );
+                    case 'ROBOT': return (
+                            <div className="p-6 md:p-12 space-y-8 flex-1 overflow-y-auto pb-40">
+                                <div className="flex items-center justify-between p-6 glass-panel rounded-3xl border border-white/10">
+                                    <div><h2 className="text-xl font-black uppercase italic tracking-widest text-white">PiCar-X Link</h2><p className="text-xs font-bold text-slate-400">Status: {pi4Status.toUpperCase()}</p></div>
+                                    {pi4Status !== 'online' ? ( <button onClick={connectPi4} className="px-6 py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600 hover:text-white rounded-xl text-sm font-bold uppercase transition-all">Connetti</button> ) : ( <span className="flex items-center gap-2 text-emerald-400 font-bold bg-emerald-500/10 px-4 py-2 rounded-xl"><Wifi size={18}/> Connesso (192.168.1.100)</span> )}
+                                </div>
+                                <div className={`transition-opacity ${pi4Status !== 'online' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
+                                    <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto mb-8">
+                                        <div/><button className="p-6 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 hover:text-white flex justify-center active:scale-90"><ArrowUp size={24}/></button><div/>
+                                        <button className="p-6 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 hover:text-white flex justify-center active:scale-90"><ArrowLeft size={24}/></button>
+                                        <button className="p-6 bg-red-500/20 text-red-500 border border-red-500/30 rounded-2xl hover:bg-red-500 flex justify-center active:scale-90"><ShieldAlert size={24}/></button>
+                                        <button className="p-6 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 hover:text-white flex justify-center active:scale-90"><ArrowRight size={24}/></button>
+                                        <div/><button className="p-6 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 hover:text-white flex justify-center active:scale-90"><ArrowDown size={24}/></button><div/>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+                                        <button onClick={()=>sendAction('hw', 'sentry')} className="p-4 glass-panel rounded-2xl border border-white/10 hover:bg-emerald-500/20 hover:text-emerald-400 flex flex-col items-center gap-2"><Eye size={20}/><span className="text-[10px] font-black uppercase tracking-widest">Modalità Vedetta</span></button>
+                                        <button onClick={()=>sendAction('hw', 'lights')} className="p-4 glass-panel rounded-2xl border border-white/10 hover:bg-yellow-500/20 hover:text-yellow-400 flex flex-col items-center gap-2"><Lightbulb size={20}/><span className="text-[10px] font-black uppercase tracking-widest">Fari Notturni</span></button>
+                                    </div>
+                                </div>
                             </div>
-                        `;
-                        prizeContainer.appendChild(prizeRow);
-                        prizeRow.querySelectorAll('input').forEach(input => input.addEventListener('input', updatePrizeTotal));
-                    });
-                    addPrizeBtn.click(); addPrizeBtn.click(); addPrizeBtn.click();
+                        );
+                    case 'APPS': return (
+                            <div className="p-6 md:p-12 space-y-6 flex-1 overflow-y-auto pb-40">
+                                <h2 className="text-xl font-black uppercase italic tracking-widest text-white mb-6">Ecosistema K-Apps</h2>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <AppCard icon={<Youtube className="text-red-500"/>} label="YouTube" onClick={() => setActiveIframe("[https://www.youtube.com/embed?autoplay=1](https://www.youtube.com/embed?autoplay=1)")} />
+                                    <AppCard icon={<Play className="text-slate-300"/>} label="Netflix" onClick={() => window.open('[https://netflix.com](https://netflix.com)')} />
+                                    <AppCard icon={<Map className="text-emerald-500"/>} label="Maps" onClick={() => sendAction('app', 'maps')} />
+                                    <AppCard icon={<MusicIcon className="text-purple-500"/>} label="Music" onClick={() => sendAction('app', 'music')} />
+                                    <AppCard icon={<Cloud className="text-blue-400"/>} label="G-One Storage" onClick={() => sendAction('app', 'googleone')} />
+                                    <AppCard icon={<MonitorPlay className="text-indigo-400"/>} label="AiM Telemetria" onClick={() => alert("Modulo AiM Sport in sviluppo.")} />
+                                </div>
+                            </div>
+                        );
+                    case 'CODICE': return (
+                            <div className="p-6 md:p-12 flex flex-col h-full pb-40 gap-6">
+                                <div className="flex justify-between items-end"><div><h2 className="text-xl font-black uppercase italic tracking-widest text-white">Termux IDE</h2></div></div>
+                                <div className="flex-1 glass-panel border border-white/10 rounded-3xl p-4 overflow-hidden flex flex-col shadow-2xl">
+                                    <div className="flex items-center gap-2 mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500"><Code size={14}/> File Draft</div>
+                                    <textarea value={codeDraft} onChange={(e) => setCodeDraft(e.target.value)} className="w-full flex-1 bg-black/50 rounded-xl p-4 font-mono text-sm text-green-400 resize-none outline-none border border-transparent focus:border-blue-500/30" spellCheck="false"></textarea>
+                                </div>
+                                <button onClick={() => sendAction('hw', 'termux_run', { code: codeDraft })} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.4)] flex justify-center items-center gap-3 active:scale-95"><Terminal size={20} /> Esegui su Termux</button>
+                            </div>
+                        );
+                    case 'MEMORIA': return (
+                            <div className="p-6 md:p-12 space-y-6 flex-1 overflow-y-auto pb-40">
+                                <div className="flex justify-between items-center glass-panel p-6 rounded-3xl border border-white/10"><div><h2 className="text-xl font-black uppercase italic tracking-widest text-white">Database Fatti</h2></div><Database size={32} className="text-emerald-500" /></div>
+                                <div className="space-y-3">
+                                    {memoryStats.fattiList && memoryStats.fattiList.length > 0 ? memoryStats.fattiList.map((fatto, i) => ( <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex gap-4 items-start"><div className="mt-1 text-blue-500"><BrainCircuit size={16}/></div><div><p className="text-sm font-medium text-slate-200">{fatto.fatto}</p><p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">{new Date(fatto.data).toLocaleDateString()}</p></div></div> )) : <div className="p-8 text-center text-slate-500 font-bold text-sm">Nessun fatto in memoria.</div>}
+                                </div>
+                            </div>
+                        );
+                    case 'AGENDA': return (
+                            <div className="p-6 md:p-12 space-y-6 flex-1 overflow-y-auto pb-40">
+                                <h2 className="text-xl font-black uppercase italic tracking-widest text-white mb-6">Progetti & Eventi</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {agendaItems.map(item => ( <div key={item.id} className="p-6 glass-panel rounded-3xl border border-white/10 flex flex-col gap-4 hover:border-blue-500/30 transition-colors"><div className="flex justify-between items-center"><span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${item.type === 'kyra' ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-blue-500/20 text-blue-400'}`}>{item.type === 'kyra' ? 'Auto-Log' : 'Task Utente'}</span><span className="text-xs font-bold text-slate-500">{item.date}</span></div><p className="text-sm font-medium text-slate-200">{item.text}</p></div> ))}
+                                </div>
+                            </div>
+                        );
+                    default: return null;
                 }
+            };
 
-                const authModal = document.getElementById('auth-modal');
-                const loginBtn = document.getElementById('login-btn');
-                const registerBtn = document.getElementById('register-btn');
-                const logoutBtn = document.getElementById('logout-btn');
-                
-                function checkForWeeklyBonus() {
-                    const lastBonusTime = parseInt(localStorage.getItem('lastBonusTime') || '0');
-                    const oneWeek = 7 * 24 * 60 * 60 * 1000;
-                    if (Date.now() - lastBonusTime > oneWeek) {
-                        userState.skullsBalance += 800;
-                        localStorage.setItem('lastBonusTime', Date.now().toString());
-                        showNotification('Bonus settimanale ricevuto! +800 Skulls!', 'success');
-                    }
-                }
+            return (
+                <div className="flex h-screen w-full relative">
+                    {enlargedImage && ( <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-lg flex items-center justify-center p-4"><button onClick={() => setEnlargedImage(null)} className="absolute top-6 right-6 p-3 bg-white/10 rounded-full hover:bg-red-500 hover:text-white"><X size={24}/></button><img src={enlargedImage} className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl border border-white/10" /></div> )}
+                    {activeIframe && ( <div className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex flex-col p-4 md:p-10 animate-in fade-in zoom-in-95 duration-300"><div className="flex justify-between items-center mb-4 bg-slate-900 p-4 rounded-2xl border border-white/10"><div className="flex items-center gap-3"><MonitorPlay className="text-blue-500"/><h3 className="text-xl font-black italic text-white uppercase tracking-widest">K-Monitor</h3></div><button onClick={() => setActiveIframe(null)} className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-xl"><X size={24}/></button></div><div className="flex-1 rounded-3xl overflow-hidden border-2 border-blue-500/30 bg-black"><iframe src={activeIframe} className="w-full h-full" allow="autoplay; encrypted-media; fullscreen" title="K-Monitor"></iframe></div></div> )}
 
-                if (authModal) {
-                    const closeModalBtn = document.getElementById('close-modal-btn');
-                    const modalTitle = document.getElementById('modal-title');
-                    const usernameField = document.getElementById('username-field');
-                    const authForm = document.getElementById('auth-form');
-                    const modalBackdrop = authModal.querySelector('.modal-backdrop');
-                    const authSwitch = document.getElementById('auth-switch');
-                    const authSubmitBtn = document.getElementById('auth-submit-btn');
-                    const btnText = authSubmitBtn.querySelector('.btn-text');
-                    const btnLoader = authSubmitBtn.querySelector('.loader');
+                    <nav className="w-20 md:w-24 border-r border-white/5 bg-[#0a0b10]/90 backdrop-blur-2xl flex flex-col items-center py-6 z-30 shrink-0 hidden md:flex">
+                        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.5)] mb-8"><Zap size={20} className="text-white"/></div>
+                        <div className="flex flex-col gap-6 w-full px-4">
+                            {TABS.map(tab => ( <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all ${activeTab === tab.id ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}><tab.icon size={22} strokeWidth={activeTab === tab.id ? 2.5 : 2} /><span className="text-[8px] font-black uppercase tracking-widest">{tab.label}</span>{activeTab === tab.id && <div className="absolute -right-4 w-1 h-8 bg-blue-500 rounded-l-full shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>}</button> ))}
+                        </div>
+                    </nav>
 
-                    function openModal(type) {
-                        authForm.reset();
-                        authForm.dataset.type = type;
+                    <nav className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0a0b10]/95 backdrop-blur-xl border-b border-white/10 z-40 flex items-center px-4 gap-4 overflow-x-auto no-scrollbar">
+                        <div className="w-8 h-8 shrink-0 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg"><Zap size={16} className="text-white"/></div>
+                        {TABS.map(tab => ( <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${activeTab === tab.id ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-500'}`}><tab.icon size={16} /><span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span></button> ))}
+                    </nav>
 
-                        if (type === 'login') {
-                            modalTitle.textContent = 'Accedi';
-                            usernameField.classList.add('hidden');
-                            usernameField.querySelector('input').required = false;
-                            btnText.textContent = 'Accedi';
-                            authSwitch.innerHTML = `Non hai un account? <a href="#" class="font-bold text-red-400 hover:underline" data-switch-to="register">Registrati</a>`;
-                        } else {
-                            modalTitle.textContent = 'Registrati';
-                            usernameField.classList.remove('hidden');
-                            usernameField.querySelector('input').required = true;
-                            btnText.textContent = 'Registrati';
-                            authSwitch.innerHTML = `Hai già un account? <a href="#" class="font-bold text-red-400 hover:underline" data-switch-to="login">Accedi</a>`;
-                        }
-                        authModal.classList.remove('hidden');
-                        authModal.classList.add('flex');
-                    }
-                    
-                    authSwitch.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        if (e.target.dataset.switchTo) {
-                            openModal(e.target.dataset.switchTo);
-                        }
-                    });
+                    <div className="flex-1 flex flex-col relative w-full pt-16 md:pt-0">
+                        <header className="absolute top-4 right-6 z-30 flex items-center gap-4 pointer-events-none"><KyraFace isListening={isListening} isGenerating={isGenerating} /></header>
+                        {renderTabContent()}
+                        <div className="absolute bottom-4 md:bottom-8 left-4 right-4 md:left-12 md:right-12 z-40 pointer-events-auto">
+                            {attachment && ( <div className="absolute -top-14 left-4 glass-panel border border-blue-500/50 p-2 rounded-xl flex items-center gap-3 shadow-2xl">{attachment.type === 'image' ? <img src={attachment.data} className="w-10 h-10 object-cover rounded-lg" /> : <div className="w-10 h-10 bg-white/5 flex items-center justify-center rounded-lg"><FileText size={16} className="text-slate-300" /></div>}<div className="flex flex-col"><span className="text-[9px] font-black uppercase text-blue-400">Allegato</span><span className="text-xs text-white max-w-[100px] truncate">{attachment.name}</span></div><button onClick={() => setAttachment(null)} className="p-1.5 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-lg ml-1"><X size={14} /></button></div> )}
+                            <form onSubmit={(e) => { e.preventDefault(); sendMessageToKyra(inputText); }} className="glass-panel border border-white/10 rounded-[2.5rem] p-2 flex flex-col gap-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                                <div className="flex items-center px-4 pt-2 justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">{activeTab} MODE</span>
+                                    <div className="flex items-center gap-3">
+                                        <button type="button" onClick={toggleHandsFree} className={`w-10 h-5 rounded-full transition-colors relative flex items-center ${handsFree ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`}><div className={`w-3 h-3 bg-white rounded-full absolute transition-transform ${handsFree ? 'translate-x-6' : 'translate-x-1'}`}></div></button>
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 hidden md:block">{handsFree ? "Wake Word ('Kyra')" : "Mic Spento"}</span>
+                                    </div>
+                                </div>
+                                <div className="relative flex items-center gap-2">
+                                    <input type="file" accept="image/*" className="hidden" ref={imageInputRef} onChange={handleFileSelect} />
+                                    <button type="button" onClick={() => imageInputRef.current?.click()} className="p-4 text-slate-400 hover:text-blue-400 hover:bg-white/5 rounded-full transition-all shrink-0"><ImageIcon size={20}/></button>
+                                    <input value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder={handsFree ? "Ascolto attivo..." : activeTab === 'CODICE' ? "Chiedi di generare uno script..." : "Invia comando..."} className="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder:text-slate-600 font-medium py-4" />
+                                    <button type="button" onClick={toggleVoiceInput} disabled={handsFree} className={`p-4 rounded-full transition-all flex items-center justify-center shrink-0 ${handsFree ? 'opacity-30' : isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}><Mic size={20}/></button>
+                                    <button type="submit" disabled={!inputText.trim() && !attachment} className="p-4 bg-blue-600 rounded-full text-white shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:scale-105 active:scale-95 transition-all shrink-0"><Send size={20}/></button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
-                    function closeModal() {
-                        if (authModal) {
-                            authModal.classList.add('hidden');
-                            authModal.classList.remove('flex');
-                        }
-                    }
+        const AppCard = ({ icon, label, onClick }) => ( <button onClick={onClick} className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col items-center justify-center gap-4 hover:bg-white/5 hover:border-blue-500/30 transition-all group active:scale-95"><div className="p-4 bg-black/40 rounded-2xl group-hover:scale-110 transition-transform shadow-inner">{icon}</div><span className="text-xs font-black uppercase tracking-widest text-slate-300 group-hover:text-white">{label}</span></button> );
 
-                    if (loginBtn) loginBtn.addEventListener('click', () => openModal('login'));
-                    if (registerBtn) registerBtn.addEventListener('click', () => openModal('register'));
-                    if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-                    if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
-
-                    if (authForm) {
-                        authForm.addEventListener('submit', (e) => {
-                            e.preventDefault();
-                            btnText.classList.add('hidden');
-                            btnLoader.classList.remove('hidden');
-                            authSubmitBtn.disabled = true;
-                            
-                            setTimeout(() => {
-                                const isRegistering = authForm.dataset.type === 'register';
-                                userState.isLoggedIn = true;
-                                const usernameInput = document.getElementById('username');
-                                const emailInput = document.getElementById('email');
-
-                                if(isRegistering && usernameInput && usernameInput.value) {
-                                    userState.username = usernameInput.value;
-                                    showNotification(`Registrazione completata! Benvenuto ${userState.username}!`, 'success');
-                                } else {
-                                    userState.username = emailInput.value.split('@')[0] || 'Pilota';
-                                    showNotification('Accesso effettuato con successo!', 'success');
-                                }
-                                
-                                checkForWeeklyBonus();
-                                updateUserUI();
-                                switchPage(document.getElementById('nav-dashboard'));
-                                
-                                btnText.classList.remove('hidden');
-                                btnLoader.classList.add('hidden');
-                                authSubmitBtn.disabled = false;
-                                closeModal();
-                            }, 1000); 
-                        });
-                    }
-                }
-
-                if (logoutBtn) {
-                    logoutBtn.addEventListener('click', () => {
-                        userState.isLoggedIn = false;
-                        showNotification('Logout effettuato.', 'info');
-                        updateUserUI();
-                    });
-                }
-
-                const countdownContainer = document.getElementById('race-countdown-container');
-                const countdownEl = document.getElementById('race-countdown');
-                let countdownInterval;
-
-                function startCountdown() {
-                    if (countdownContainer) countdownContainer.classList.remove('hidden');
-                    let timeLeft = 15 * 60;
-                    if (countdownInterval) clearInterval(countdownInterval);
-                    countdownInterval = setInterval(() => {
-                        if (timeLeft <= 0) {
-                            clearInterval(countdownInterval);
-                            if (countdownEl) countdownEl.textContent = "GARA IN CORSO";
-                            return;
-                        }
-                        timeLeft--;
-                        const minutes = Math.floor(timeLeft / 60);
-                        const seconds = timeLeft % 60;
-                        if (countdownEl) {
-                           countdownEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-                        }
-                    }, 1000);
-                }
-
-                document.querySelectorAll('.join-race-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                         if (!userState.isLoggedIn) {
-                            showNotification('Devi accedere per partecipare a una gara.', 'error');
-                            if (authModal) openModal('login');
-                            return;
-                        }
-                        const costType = btn.dataset.costType;
-                        const cost = parseInt(btn.dataset.cost);
-                        const raceTitle = btn.closest('.race-card').querySelector('h4').textContent;
-                        
-                        // --- INIZIO CODICE AGGIUNTO ---
-                        const updateParticipantCount = () => {
-                            const raceCard = btn.closest('.race-card');
-                            const participantCountEl = raceCard.querySelector('.participant-count');
-                            if (participantCountEl) {
-                                let parts = participantCountEl.textContent.split(' / ');
-                                let currentParticipants = parseInt(parts[0]);
-                                let maxParticipants = parts[1];
-                                if (currentParticipants < parseInt(maxParticipants)) {
-                                    currentParticipants++;
-                                    participantCountEl.textContent = `${currentParticipants} / ${maxParticipants}`;
-                                }
-                            }
-                        };
-                        // --- FINE CODICE AGGIUNTO ---
-
-                        if (costType === 'skulls') {
-                            if (userState.skullsBalance >= cost) {
-                                userState.skullsBalance -= cost;
-                                showNotification(`Iscrizione confermata! ${cost} Skulls scalati.`, 'success');
-                                updateUserUI();
-                                btn.textContent = 'Iscritto';
-                                btn.disabled = true;
-                                updateParticipantCount(); // <-- CHIAMATA FUNZIONE
-                                startCountdown();
-                                openChatModal(raceTitle);
-                            } else {
-                                showNotification('Non hai abbastanza Skulls per iscriverti.', 'error');
-                            }
-                        } else {
-                           showNotification(`Iscrizione avvenuta! Le transazioni con denaro reale sono disabilitate in Beta.`, 'info');
-                           btn.textContent = 'Iscritto';
-                           btn.disabled = true;
-                           updateParticipantCount(); // <-- CHIAMATA FUNZIONE
-                           startCountdown();
-                           openChatModal(raceTitle);
-                        }
-                    });
-                });
-
-                const chatModal = document.getElementById('chat-modal');
-                if (chatModal) {
-                    const chatTitleEl = document.getElementById('chat-title');
-                    const chatCloseBtn = document.getElementById('chat-close-btn');
-                    const chatMessages = document.getElementById('chat-messages');
-                    const chatInput = document.getElementById('chat-input');
-                    const chatSendBtn = document.getElementById('chat-send-btn');
-                    const chatBackdrop = chatModal.querySelector('.modal-backdrop');
-                    function openChatModal(raceTitle = 'Chat Gara') {
-                        chatTitleEl.textContent = raceTitle;
-                        chatMessages.innerHTML = `<div class="text-center text-sm text-gray-500 p-2 bg-gray-800/50 rounded-md">Benvenuto nella chat per "${raceTitle}". Sii rispettoso!</div>`;
-                        chatModal.classList.remove('hidden');
-                        chatModal.classList.add('flex');
-                        chatInput.focus();
-                    }
-                    window.openChatModal = openChatModal; 
-                    function closeChatModal() {
-                        chatModal.classList.add('hidden');
-                        chatModal.classList.remove('flex');
-                    }
-                    function sendMessage() {
-                        if (!chatInput || !chatMessages || chatInput.value.trim() === '') return;
-                        const messageEl = document.createElement('div');
-                        messageEl.classList.add('mb-2');
-                        const sanitizedMessage = chatInput.value.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                        messageEl.innerHTML = `<p><span class="font-bold text-red-400">${userState.username}:</span> ${sanitizedMessage}</p>`;
-                        chatMessages.appendChild(messageEl);
-                        chatInput.value = '';
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
-                    document.body.addEventListener('click', function(e) {
-                       const chatIcon = e.target.closest('[data-lucide="message-square"]');
-                       if (chatIcon) {
-                           const raceTitle = chatIcon.closest('.race-card').querySelector('h4').textContent;
-                           openChatModal(raceTitle);
-                       }
-                    });
-                    if(chatCloseBtn) chatCloseBtn.addEventListener('click', closeChatModal);
-                    if(chatSendBtn) chatSendBtn.addEventListener('click', sendMessage);
-                    if(chatInput) chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-                    if(chatBackdrop) chatBackdrop.addEventListener('click', closeChatModal);
-                }
-
-                const carInput = document.getElementById('car-input');
-                const trackInput = document.getElementById('track-input');
-                const carSuggestions = document.getElementById('car-suggestions');
-                const trackSuggestions = document.getElementById('track-suggestions');
-                function setupAutocomplete(input, suggestions, db) {
-                    if(!input) return;
-                    input.addEventListener('input', function() {
-                        const query = this.value.toLowerCase();
-                        suggestions.innerHTML = '';
-                        if (query.length < 2) {
-                            suggestions.classList.add('hidden');
-                            return;
-                        }
-                        const matches = db.filter(item => item.toLowerCase().includes(query)).slice(0, 5);
-                        if (matches.length > 0) {
-                            matches.forEach(match => {
-                                const div = document.createElement('div');
-                                div.textContent = match;
-                                div.className = 'suggestion-item';
-                                div.onclick = () => {
-                                    input.value = match;
-                                    suggestions.classList.add('hidden');
-                                };
-                                suggestions.appendChild(div);
-                            });
-                            suggestions.classList.remove('hidden');
-                        } else {
-                            suggestions.classList.add('hidden');
-                        }
-                    });
-                     document.addEventListener('click', function(e) {
-                        if (!e.target.closest('.relative')) {
-                            if (suggestions) suggestions.classList.add('hidden');
-                        }
-                    });
-                }
-                if (carInput) setupAutocomplete(carInput, carSuggestions, carsDB);
-                if (trackInput) setupAutocomplete(trackInput, trackSuggestions, tracksDB);
-                
-                document.querySelectorAll('#page-car-setup .tool-tab').forEach(tab => {
-                    tab.addEventListener('click', function() {
-                        document.querySelectorAll('#page-car-setup .tool-tab').forEach(t => t.classList.remove('active'));
-                        this.classList.add('active');
-                        document.querySelectorAll('#page-car-setup .tool-tab-content').forEach(c => c.classList.add('hidden'));
-                        const contentId = this.dataset.tab;
-                        const targetContent = document.getElementById(contentId);
-                        if (targetContent) {
-                            targetContent.classList.remove('hidden');
-                        }
-                    });
-                });
-
-                document.querySelectorAll('#page-car-setup .slider').forEach(slider => {
-                    const valueEl = slider.previousElementSibling.querySelector('span');
-                    if (valueEl) {
-                        slider.addEventListener('input', () => { 
-                            let unit = valueEl.textContent.split(' ').pop();
-                            valueEl.textContent = `${slider.value} ${unit}`;
-                        });
-                    }
-                });
-
-                const btnPs5 = document.getElementById('btn-ps5');
-                const btnPs4 = document.getElementById('btn-ps4');
-                const guidePs5 = document.getElementById('guide-ps5');
-                const guidePs4 = document.getElementById('guide-ps4');
-                const mtuDescriptionEl = document.getElementById('mtu-description');
-                
-                if (btnPs5) {
-                    const activeClasses = ['active-console-btn'];
-                    const inactiveClasses = ['inactive-console-btn'];
-                    function selectConsole(console) {
-                        if (console === 'ps5') {
-                            btnPs5.classList.add(...activeClasses); btnPs5.classList.remove(...inactiveClasses);
-                            btnPs4.classList.add(...inactiveClasses); btnPs4.classList.remove(...activeClasses);
-                            if(guidePs5) guidePs5.classList.remove('hidden'); 
-                            if(guidePs4) guidePs4.classList.add('hidden');
-                        } else {
-                            btnPs4.classList.add(...activeClasses); btnPs4.classList.remove(...inactiveClasses);
-                            btnPs5.classList.add(...inactiveClasses); btnPs5.classList.remove(...activeClasses);
-                            if(guidePs4) guidePs4.classList.remove('hidden'); 
-                            if(guidePs5) guidePs5.classList.add('hidden');
-                        }
-                    }
-                    btnPs5.addEventListener('click', () => selectConsole('ps5'));
-                    btnPs4.addEventListener('click', () => selectConsole('ps4'));
-                    selectConsole('ps5');
-                
-                    const mtuData = {
-                        '1473': { description: '<strong>Valore 1473:</strong> Ottimo equilibrio tra velocità e stabilità.', stability: 85, speed: 90 },
-                        '1472': { description: '<strong>Valore 1472:</strong> Alternativa solida, può funzionare meglio su alcune reti.', stability: 88, speed: 88 },
-                        '1450': { description: '<strong>Valore 1450:</strong> Priorità alla stabilità, ideale per connessioni instabili.', stability: 95, speed: 80 },
-                    };
-                    const mtuChartCanvas = document.getElementById('mtuChart');
-                    if (mtuChartCanvas) {
-                        const ctx = mtuChartCanvas.getContext('2d');
-                        new Chart(ctx, {
-                            type: 'bar',
-                            data: {
-                                labels: ['1473', '1472', '1450'],
-                                datasets: [
-                                    { label: 'Stabilità', data: [85, 88, 95], backgroundColor: 'rgba(59, 130, 246, 0.7)' },
-                                    { label: 'Velocità', data: [90, 88, 80], backgroundColor: 'rgba(16, 185, 129, 0.7)' }
-                                ]
-                            },
-                            options: {
-                                responsive: true, maintainAspectRatio: false,
-                                scales: { y: { beginAtZero: true, max: 100, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.1)' } }, x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.1)' } } },
-                                plugins: { legend: { labels: { color: '#9ca3af' } } },
-                                onClick: (event, elements) => {
-                                    if (elements.length > 0) {
-                                        const chart = elements[0].chart;
-                                        const label = chart.data.labels[elements[0].index];
-                                        if (mtuDescriptionEl) mtuDescriptionEl.innerHTML = mtuData[label].description;
-                                    }
-                                },
-                            }
-                        });
-                    }
-
-                    const advisorForm = document.getElementById('advisor-form');
-                    if (advisorForm) {
-                        advisorForm.addEventListener('submit', async (e) => {
-                            e.preventDefault();
-                            showNotification("L'assistente AI è in fase di sviluppo e sarà disponibile a breve.", 'info');
-                        });
-                    }
-                }
-                
-                // --- INIZIO MODIFICHE LOGICA GIOCO ---
-                const gameArea = document.getElementById('reaction-game-area');
-                const gameMessage = document.getElementById('reaction-game-message');
-                const startReactionBtn = document.getElementById('start-reaction-game');
-                const reactionTarget = document.getElementById('reaction-target');
-                const reactionLeaderboard = document.getElementById('reaction-leaderboard');
-                const gameLevelDisplay = document.getElementById('game-level-display');
-                const gameScoreDisplay = document.getElementById('game-score-display');
-                const gameMissesDisplay = document.getElementById('game-misses-display');
-                
-                let gameActive = false;
-                let currentLevel = 1;
-                let score = 0;
-                let targetsHitThisLevel = 0;
-                let targetsPerLevel = 3;
-                let timeLeft = 6;
-                let misses = 0; // Contatore errori
-                let gameIntervalId;
-                let audioCtx;
-                
-                function playSound(type = 'hit') {
-                    if (!audioCtx) {
-                       try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } 
-                       catch(e) { console.error("Web Audio API non supportata"); return; }
-                    }
-                    const oscillator = audioCtx.createOscillator();
-                    const gainNode = audioCtx.createGain();
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    oscillator.start(audioCtx.currentTime); 
-                    if (type === 'hit') {
-                        oscillator.type = 'sine';
-                        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-                        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
-                        oscillator.stop(audioCtx.currentTime + 0.1);
-                    } else if (type === 'level-up') {
-                        oscillator.type = 'sawtooth';
-                        oscillator.frequency.setValueAtTime(261.63, audioCtx.currentTime);
-                        oscillator.frequency.exponentialRampToValueAtTime(523.25, audioCtx.currentTime + 0.2);
-                        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
-                        oscillator.stop(audioCtx.currentTime + 0.2);
-                    }
-                }
-
-                function updateGameUI() {
-                    if (gameLevelDisplay) gameLevelDisplay.textContent = `Livello: ${currentLevel}`;
-                    if (gameScoreDisplay) gameScoreDisplay.textContent = `Punteggio: ${score}`;
-                    if (gameMissesDisplay) gameMissesDisplay.textContent = `Errori: ${misses} / 3`;
-                }
-
-                function startGame() {
-                    if (!gameMessage || !startReactionBtn || !gameArea || !reactionTarget) return;
-                    gameActive = true;
-                    score = 0;
-                    currentLevel = 1;
-                    misses = 0;
-                    targetsPerLevel = 5; // Aumentato per rendere il gioco più lungo
-                    updateGameUI();
-                    gameMessage.textContent = `Livello ${currentLevel} - Colpisci ${targetsPerLevel} bersagli!`;
-                    startReactionBtn.classList.add('hidden');
-                    resetLevel(10); // Più tempo per il primo livello
-                }
-
-                function resetLevel(time) {
-                    targetsHitThisLevel = 0;
-                    timeLeft = time;
-                    if(gameIntervalId) clearInterval(gameIntervalId);
-                    gameIntervalId = setInterval(gameLoop, 1000);
-                    showTarget();
-                }
-
-                function gameLoop() {
-                    timeLeft--;
-                    if(gameMessage && gameActive) gameMessage.textContent = `Tempo rimasto: ${timeLeft}s`;
-                    if (timeLeft <= 0) {
-                        endGame('Tempo scaduto!');
-                    }
-                }
-
-                function showTarget() {
-                    if (!gameActive || !gameArea || !reactionTarget) return;
-                    const gameAreaRect = gameArea.getBoundingClientRect();
-                    const targetSize = Math.max(15, 60 - (currentLevel * 3));
-                    reactionTarget.style.width = `${targetSize}px`;
-                    reactionTarget.style.height = `${targetSize}px`;
-                    reactionTarget.style.top = `${Math.random() * (gameAreaRect.height - targetSize)}px`;
-                    reactionTarget.style.left = `${Math.random() * (gameAreaRect.width - targetSize)}px`;
-                    reactionTarget.classList.remove('hidden');
-                }
-
-                function targetClicked() {
-                    if (!gameActive) return;
-                    playSound('hit');
-                    score += 100 + (currentLevel * 10) + (timeLeft * 5);
-                    updateGameUI();
-                    targetsHitThisLevel++;
-                    if (targetsHitThisLevel >= targetsPerLevel) {
-                        if(gameIntervalId) clearInterval(gameIntervalId);
-                        reactionTarget.classList.add('hidden');
-                        gameMessage.textContent = `Livello ${currentLevel} completato!`;
-                        setTimeout(nextLevel, 1500);
-                    } else {
-                        reactionTarget.classList.add('hidden');
-                        setTimeout(showTarget, Math.max(50, 400 - currentLevel * 20));
-                    }
-                }
-
-                function nextLevel() {
-                    playSound('level-up');
-                    currentLevel++;
-                    targetsPerLevel = 5 + currentLevel; // Aumenta il numero di bersagli
-                    const newTime = Math.max(5, 12 - currentLevel); // Il tempo diminuisce più lentamente
-                    showNotification(`Livello ${currentLevel}!`, 'success');
-                    updateGameUI();
-                    gameMessage.textContent = `Livello ${currentLevel} - Colpisci ${targetsPerLevel} bersagli!`;
-                    resetLevel(newTime);
-                }
-                
-                function endGame(reason) {
-                    if (!gameActive) return;
-                    gameActive = false;
-                    if(gameIntervalId) clearInterval(gameIntervalId);
-                    reactionTarget.classList.add('hidden');
-                    gameMessage.innerHTML = `Game Over! ${reason} <br> Punteggio finale: <span class="text-green-400 font-bold">${score}</span>`;
-                    startReactionBtn.classList.remove('hidden');
-                    
-                    if(userState.isLoggedIn && score > 0) {
-                        const earnedSkulls = Math.round(score / 100);
-                        userState.skullsBalance += earnedSkulls;
-                        showNotification(`Hai guadagnato ${earnedSkulls} Skulls!`, 'success');
-                        updateUserUI();
-                    }
-                    updateLeaderboard(score);
-                }
-                
-                function updateLeaderboard(newScore) {
-                    if (newScore <= 0) return;
-                    let playerName = userState.isLoggedIn ? userState.username : null;
-                    if (!playerName) {
-                        playerName = prompt("Inserisci il tuo nome per la classifica (max 12 caratteri):") || `Player ${userState.guestPlayerCount++}`;
-                        playerName = playerName.substring(0, 12);
-                        localStorage.setItem('guestPlayerCount', userState.guestPlayerCount);
-                    }
-                    let scores = JSON.parse(localStorage.getItem('reactionScores')) || [];
-                    scores.push({ name: playerName, score: newScore });
-                    scores.sort((a, b) => b.score - a.score);
-                    scores = scores.slice(0, 5);
-                    localStorage.setItem('reactionScores', JSON.stringify(scores));
-                    renderLeaderboard();
-                }
-                
-                function renderLeaderboard() {
-                    const scores = JSON.parse(localStorage.getItem('reactionScores')) || [];
-                    if (!reactionLeaderboard) return;
-                    reactionLeaderboard.innerHTML = '';
-                    if (scores.length === 0) {
-                        reactionLeaderboard.innerHTML = '<tr><td class="px-6 py-4" colspan="3">Nessun punteggio. Gioca per iniziare!</td></tr>';
-                        return;
-                    }
-                    scores.forEach((score, index) => {
-                         const tr = document.createElement('tr');
-                         tr.className = "border-b border-gray-700";
-                         tr.innerHTML = `<td class="px-6 py-4 font-medium text-white">${index + 1}</td><td class="px-6 py-4">${score.name}</td><td class="px-6 py-4 text-green-400">${score.score} pts</td>`;
-                         reactionLeaderboard.appendChild(tr);
-                    });
-                }
-                
-                if (startReactionBtn) startReactionBtn.addEventListener('click', startGame);
-                if (reactionTarget) reactionTarget.addEventListener('click', targetClicked);
-                
-                if (gameArea) gameArea.addEventListener('mousedown', (e) => {
-                    if (gameActive && e.target === gameArea) {
-                        misses++;
-                        updateGameUI();
-                        showNotification(`Mancato! -50 punti (${misses}/3 errori)`, "error");
-                        score = Math.max(0, score - 50);
-                        if (misses >= 3) {
-                            endGame('Hai commesso 3 errori');
-                        }
-                    }
-                });
-                // FINE MODIFICHE LOGICA GIOCO
-                
-                renderLeaderboard();
-                updateUserUI();
-            }
-        });
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
-
-
