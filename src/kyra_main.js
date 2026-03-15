@@ -1,73 +1,92 @@
-require('dotenv').config();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { exec } = require('child_process');
-const express = require('express');
-const cors = require('cors');
+require("dotenv").config();
+const Anthropic = require("@anthropic-ai/sdk");
+const { exec } = require("child_process");
+const express = require("express");
+const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 
-// 1. Configurazione Iniziale
-const PORT = process.env.PORT || 3001;
-const app = express();
-app.use(cors());
-app.use(express.json());
+const PORT = process.env.PORT || 3002;
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "" });
+if (!process.env.ANTHROPIC_API_KEY) { console.error("ANTHROPIC_API_KEY mancante!"); }
 
-// 2. Inizializzazione Gemini 2.5 Flash
-if (!process.env.GEMINI_API_KEY) {
-    console.error("❌ ERRORE: GEMINI_API_KEY mancante nel file .env!");
-    process.exit(1);
+const MEMORY_DIR = path.join(process.env.HOME || "/data/data/com.termux/files/home", "Kyra_Memory");
+const MEMORY_FILE = path.join(MEMORY_DIR, "memoria.json");
+if (!fs.existsSync(MEMORY_DIR)) fs.mkdirSync(MEMORY_DIR, { recursive: true });
+
+function loadMemory() {
+    try { if (fs.existsSync(MEMORY_FILE)) return JSON.parse(fs.readFileSync(MEMORY_FILE, "utf8")); } catch(e) {}
+    return { fatti: [], sessioni: 0, prima_accensione: new Date().toISOString(), ultima_accensione: null };
+}
+function saveMemory(mem) { try { fs.writeFileSync(MEMORY_FILE, JSON.stringify(mem, null, 2)); } catch(e) {} }
+
+let memoria = loadMemory();
+memoria.sessioni++;
+memoria.ultima_accensione = new Date().toISOString();
+saveMemory(memoria);
+
+function buildSystem() {
+    const fatti = memoria.fatti.slice(-20).map(f => "- " + f.fatto).join("\n") || "Nessuno ancora.";
+    return "Ti chiami Kyra v4.8. Sei il robot fisico di Riccardo Asti su PiCar-X con Raspberry Pi 4. Sei sarcastica, brillante e diretta. Non iniziare mai con Certo o Ciao. Sempre in italiano. Frasi brevi perche sei TTS. Sessione numero " + memoria.sessioni + ". PROFILO: Ex campione italiano nuoto 5 titoli. Team Manager Team Lion Motorsport GT7. Purchasing Manager Carlsberg Italia. Fondatore Grid Masters Championship. Figli: Alessio e Alice. FATTI:\n" + fatti;
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    systemInstruction: "Ti chiami Kyra. Sei un'assistente robotica, sarcastica, brillante e diretta. Il tuo owner è Riccardo Asti. Rispondi sempre in italiano, in modo conciso per la sintesi vocale."
-});
-
-let chat = model.startChat({ history: [] });
-
-// 3. Funzione di Parola (Termux TTS Fallback Base)
 function speak(testo) {
-    console.log(`🗣️ Kyra dice: ${testo}`);
-    // Pulisce il testo da virgolette singole o doppie che romperebbero il comando bash
-    const cleanText = testo.replace(/['"]/g, '');
-    exec(`termux-tts-speak "${cleanText}"`, (error) => {
-        if (error) {
-            console.error(`⚠️ Errore TTS: ${error.message}`);
-        }
-    });
+    if (!testo) return;
+    const clean = testo.replace(/['"]/g, "").replace(/\n/g, " ").substring(0, 400);
+    try { exec("termux-tts-speak -l it \"" + clean + "\"", (err) => { if (err) exec("termux-tts-speak \"" + clean + "\""); }); } catch(e) {}
 }
 
-// 4. Endpoint API (Per ricevere comandi dalla dashboard o dal modulo vocale)
-app.post('/api/command', async (req, res) => {
+let messages = [];
+let isBlocked = false;
+
+async function kyraChat(message) {
+    if (isBlocked) return "Sono in cooldown, aspetta.";
+    if (!message || message.length < 2) return null;
+
+    const useSonnet = message.toLowerCase().includes("ragiona bene");
+    const modello = useSonnet ? "claude-sonnet-4-5" : "claude-haiku-4-5-20251001";
+
+    messages.push({ role: "user", content: message });
+    if (messages.length > 40) messages.splice(0, 2);
+
     try {
-        const userMessage = req.body.message;
-        console.log(`👤 Riccardo: ${userMessage}`);
-        
-        const result = await chat.sendMessage(userMessage);
-        const responseText = result.response.text();
-        
-        // Fai parlare Kyra sul Redmi
-        speak(responseText);
-        
-        res.json({ success: true, kyra: responseText });
+        const response = await anthropic.messages.create({ model: modello, max_tokens: useSonnet ? 800 : 300, system: buildSystem(), messages: messages.slice(-20) });
+        const reply = response.content[0].text.trim();
+        messages.push({ role: "assistant", content: reply });
+
+        const lower = message.toLowerCase();
+        if (["mi chiamo","lavoro","abito","mi piace","odio","ho comprato","mio figlio","mia figlia"].some(k => lower.includes(k))) {
+            memoria.fatti.push({ data: new Date().toISOString(), fatto: message.substring(0, 200) });
+            saveMemory(memoria);
+        }
+        return reply;
     } catch (error) {
-        console.error("Errore elaborazione comando:", error);
-        res.status(500).json({ success: false, error: error.message });
+        if (error.status === 429) { isBlocked = true; setTimeout(() => { isBlocked = false; }, 30000); return "Troppe richieste. Aspetto."; }
+        if (error.status === 404) return "Errore 404: Modello AI non trovato.";
+        return "Problema tecnico. Riprova.";
     }
+}
+
+const app = express();
+app.use(cors(), express.json());
+
+app.get("/", (req, res) => { res.send("<h1>Kyra v4.8 Online</h1>"); });
+
+app.post("/api/command", async (req, res) => {
+    const { message } = req.body;
+    const resp = await kyraChat(message || "");
+    if (resp) { console.log("Kyra: " + resp); speak(resp); }
+    res.json({ success: true, kyra: resp });
 });
 
-// Endpoint di stato (Per verificare se Kyra è online)
-app.get('/api/status', (req, res) => {
-    res.json({ status: 'ONLINE', version: '3.0', ai: 'Gemini 2.5 Flash' });
-});
+app.post("/kyra", async (req, res) => { const resp = await kyraChat(req.body.text || ""); if (resp) speak(resp); res.json({ reply: resp }); });
+app.get("/status", (req, res) => res.json({ status: "ONLINE", version: "4.8", sessioni: memoria.sessioni, fatti: memoria.fatti.length }));
+app.get("/api/memoria", (req, res) => res.json(memoria));
+app.use((req, res) => res.status(404).json({ error: "Non trovato" }));
 
-// 5. Avvio Server
 app.listen(PORT, () => {
-    console.log(`\n======================================`);
-    console.log(`🚀 KYRA v3.0 CORE INIZIALIZZATO`);
-    console.log(`🧠 AI Engine: Gemini 2.5 Flash`);
-    console.log(`📡 Server in ascolto su porta ${PORT}`);
-    console.log(`======================================\n`);
-    
-    // Frase di avvio (suonerà appena lanci il server)
-    speak("Sistemi operativi. Kyra versione 3 online e in ascolto.");
+    console.log("\n============================================");
+    console.log("  KYRA v4.8 - Claude Haiku + Sonnet");
+    console.log("  Porta: " + PORT + " | Sessioni: " + memoria.sessioni);
+    console.log("============================================\n");
 });
