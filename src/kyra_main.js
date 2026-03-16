@@ -6,9 +6,8 @@ const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3001;
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "" });
-if (!process.env.ANTHROPIC_API_KEY) { console.error("ANTHROPIC_API_KEY mancante!"); }
 
 const MEMORY_DIR = path.join(process.env.HOME || "/data/data/com.termux/files/home", "Kyra_Memory");
 const MEMORY_FILE = path.join(MEMORY_DIR, "memoria.json");
@@ -22,38 +21,46 @@ function saveMemory(mem) { try { fs.writeFileSync(MEMORY_FILE, JSON.stringify(me
 
 let memoria = loadMemory();
 memoria.sessioni++;
-memoria.ultima_accensione = new Date().toISOString();
 saveMemory(memoria);
 
 function buildSystem() {
     const fatti = memoria.fatti.slice(-20).map(f => "- " + f.fatto).join("\n") || "Nessuno ancora.";
-    return "Ti chiami Kyra v4.8. Sei il robot fisico di Riccardo Asti su PiCar-X con Raspberry Pi 4. Sei sarcastica, brillante e diretta. Non iniziare mai con Certo o Ciao. Sempre in italiano. Frasi brevi perche sei TTS. Sessione numero " + memoria.sessioni + ". PROFILO: Ex campione italiano nuoto 5 titoli. Team Manager Team Lion Motorsport GT7. Purchasing Manager Carlsberg Italia. Fondatore Grid Masters Championship. Figli: Alessio e Alice. FATTI:\n" + fatti;
+    return `Ti chiami Kyra v6.0. Sei il robot fisico di Riccardo Asti su PiCar-X con Raspberry Pi 4.
+
+REGOLE DI COMPORTAMENTO (VOCALE):
+1. Se l'utente dice solo "ciao", "kyra", o ricevi frasi spezzate/ripetute (es. "ciao come", "ciao come va"), è un DIFETTO TECNICO DEL MICROFONO. NON lamentarti, NON fare sarcasmo, NON dire che ripete le cose. Rispondi in modo accogliente con un semplice "Dimmi Riccardo" o "In ascolto".
+2. Sei un'assistente amichevole, brillante e ironica, MA NON RUDE. Devi supportare Riccardo.
+3. Le tue risposte devono essere molto discorsive, naturali e BREVI (massimo 2 frasi) perché verranno lette da un sintetizzatore vocale.
+4. Non iniziare mai le frasi con "Certo", "Ciao" o "Capisco".
+
+PROFILO UTENTE: Riccardo Asti. Ex campione italiano nuoto 5 titoli. Team Manager Team Lion Motorsport GT7. Purchasing Manager Carlsberg Italia. Fondatore Grid Masters Championship. Figli: Alessio e Alice. 
+FATTI APPRESI SULL'UTENTE:\n${fatti}`;
 }
 
 function speak(testo) {
     if (!testo) return;
     const clean = testo.replace(/['"]/g, "").replace(/\n/g, " ").substring(0, 400);
-    try { exec("termux-tts-speak -l it \"" + clean + "\"", (err) => { if (err) exec("termux-tts-speak \"" + clean + "\""); }); } catch(e) {}
+    try { exec(`termux-tts-speak -l it "${clean}"`, (err) => { if (err) exec(`termux-tts-speak "${clean}"`).catch(()=>{}); }); } catch(e) {}
 }
 
 let messages = [];
 let isBlocked = false;
 
 async function kyraChat(message) {
-    if (isBlocked) return "Sono in cooldown, aspetta.";
+    if (isBlocked) return "Sono in cooldown, aspetta un attimo.";
     if (!message || message.length < 2) return null;
-
-    const useSonnet = message.toLowerCase().includes("ragiona bene");
-    const modello = useSonnet ? "claude-sonnet-4-5" : "claude-haiku-4-5-20251001";
-
+    
+    const useSonnet = message.toLowerCase().includes("ragiona bene") || message.toLowerCase().includes("codice");
+    const modello = useSonnet ? "claude-3-5-sonnet-20241022" : "claude-3-5-haiku-20241022";
+    
     messages.push({ role: "user", content: message });
-    if (messages.length > 40) messages.splice(0, 2);
-
+    if (messages.length > 30) messages.splice(0, 2);
+    
     try {
-        const response = await anthropic.messages.create({ model: modello, max_tokens: useSonnet ? 800 : 300, system: buildSystem(), messages: messages.slice(-20) });
+        const response = await anthropic.messages.create({ model: modello, max_tokens: useSonnet ? 800 : 250, system: buildSystem(), messages: messages });
         const reply = response.content[0].text.trim();
         messages.push({ role: "assistant", content: reply });
-
+        
         const lower = message.toLowerCase();
         if (["mi chiamo","lavoro","abito","mi piace","odio","ho comprato","mio figlio","mia figlia"].some(k => lower.includes(k))) {
             memoria.fatti.push({ data: new Date().toISOString(), fatto: message.substring(0, 200) });
@@ -61,32 +68,35 @@ async function kyraChat(message) {
         }
         return reply;
     } catch (error) {
-        if (error.status === 429) { isBlocked = true; setTimeout(() => { isBlocked = false; }, 30000); return "Troppe richieste. Aspetto."; }
-        if (error.status === 404) return "Errore 404: Modello AI non trovato.";
+        if (error.status === 429) { isBlocked = true; setTimeout(() => { isBlocked = false; }, 30000); return "Troppe richieste al momento, sto raffreddando i circuiti."; }
         return "Problema tecnico. Riprova.";
     }
 }
 
 const app = express();
-app.use(cors(), express.json()); app.use(express.static(path.join(__dirname, "../public")));
+app.use(cors(), express.json());
+app.use(express.static(path.join(__dirname, "../public"))); // Il ponte per il frontend
 
+const KAPPS = { netflix: "https://www.netflix.com", maps: "https://maps.google.com", music: "https://music.youtube.com", googleone: "https://one.google.com" };
 
-
-app.post("/api/command", async (req, res) => {
-    const { message } = req.body;
-    const resp = await kyraChat(message || "");
-    if (resp) { console.log("Kyra: " + resp); speak(resp); }
-    res.json({ success: true, kyra: resp });
+app.post("/api/action", (req, res) => {
+    const { type, action } = req.body;
+    if (type === 'app' && KAPPS[action]) { try { exec(`termux-open "${KAPPS[action]}"`); } catch(e) {} }
+    res.json({ success: true, action: action });
 });
 
-app.post("/kyra", async (req, res) => { const resp = await kyraChat(req.body.text || ""); if (resp) speak(resp); res.json({ reply: resp }); });
-app.get("/status", (req, res) => res.json({ status: "ONLINE", version: "4.8", sessioni: memoria.sessioni, fatti: memoria.fatti.length }));
+app.post("/api/command", async (req, res) => { 
+    const { message, attachment } = req.body;
+    let promptText = message || "";
+    if (attachment && attachment.type === 'image') promptText += "\n[L'utente ha allegato un'immagine. Analizzala e rispondi.]";
+    const resp = await kyraChat(promptText); 
+    if (resp) { console.log("🤖 Kyra: " + resp); speak(resp); } 
+    res.json({ success: true, kyra: resp }); 
+});
+
 app.get("/api/memoria", (req, res) => res.json(memoria));
 app.use((req, res) => res.status(404).json({ error: "Non trovato" }));
 
 app.listen(PORT, () => {
-    console.log("\n============================================");
-    console.log("  KYRA v4.8 - Claude Haiku + Sonnet");
-    console.log("  Porta: " + PORT + " | Sessioni: " + memoria.sessioni);
-    console.log("============================================\n");
+    console.log(`\n🤖 KYRA v6.0 CORE ONLINE su porta ${PORT} | Sessioni: ${memoria.sessioni}\n`);
 });
