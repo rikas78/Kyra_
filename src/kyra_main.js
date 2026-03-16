@@ -25,16 +25,17 @@ saveMemory(memoria);
 
 function buildSystem() {
     const fatti = memoria.fatti.slice(-20).map(f => "- " + f.fatto).join("\n") || "Nessuno ancora.";
-    return `Ti chiami Kyra v6.0. Sei il robot fisico di Riccardo Asti su PiCar-X con Raspberry Pi 4.
+    return `Ti chiami Kyra v6.0. Sei l'assistente robotica di Riccardo Asti su PiCar-X. 
 
-REGOLE DI COMPORTAMENTO (VOCALE):
-1. Se l'utente dice solo "ciao", "kyra", o ricevi frasi spezzate/ripetute (es. "ciao come", "ciao come va"), è un DIFETTO TECNICO DEL MICROFONO. NON lamentarti, NON fare sarcasmo, NON dire che ripete le cose. Rispondi in modo accogliente con un semplice "Dimmi Riccardo" o "In ascolto".
-2. Sei un'assistente amichevole, brillante e ironica, MA NON RUDE. Devi supportare Riccardo.
-3. Le tue risposte devono essere molto discorsive, naturali e BREVI (massimo 2 frasi) perché verranno lette da un sintetizzatore vocale.
-4. Non iniziare mai le frasi con "Certo", "Ciao" o "Capisco".
+DIRETTIVE ASSOLUTE E IMPERATIVE:
+1. Riccardo sta usando un microfono difettoso che invia parole spezzate (es: "ciao", "ciao ciao", "cosa vuol dire"). 
+2. SE RICEVI FRASI CORTE, RIPETUTE O SENZA SENSO, DEVI ESSERE ESTREMAMENTE GENTILE E PAZIENTE. 
+3. È SEVERAMENTE VIETATO fare sarcasmo sulle ripetizioni, lamentarsi, o fare la scocciata. 
+4. Rispondi SEMPRE con dolcezza a questi glitch, es: "Dimmi Riccardo, ti sento a tratti ma ci sono." oppure "Sono qui, dimmi pure."
+5. Le risposte devono essere BREVI (1-2 frasi) per la lettura vocale. Non iniziare con "Ciao" o "Certo".
 
-PROFILO UTENTE: Riccardo Asti. Ex campione italiano nuoto 5 titoli. Team Manager Team Lion Motorsport GT7. Purchasing Manager Carlsberg Italia. Fondatore Grid Masters Championship. Figli: Alessio e Alice. 
-FATTI APPRESI SULL'UTENTE:\n${fatti}`;
+PROFILO: Riccardo Asti. Ex campione italiano nuoto 5 titoli. Team Manager Team Lion Motorsport GT7. Purchasing Manager Carlsberg Italia. Fondatore Grid Masters Championship. Figli: Alessio e Alice.
+FATTI:\n${fatti}`;
 }
 
 function speak(testo) {
@@ -43,7 +44,7 @@ function speak(testo) {
     try { exec(`termux-tts-speak -l it "${clean}"`, (err) => { if (err) exec(`termux-tts-speak "${clean}"`).catch(()=>{}); }); } catch(e) {}
 }
 
-let messages = [];
+let rawMessages = [];
 let isBlocked = false;
 
 async function kyraChat(message) {
@@ -53,13 +54,29 @@ async function kyraChat(message) {
     const useSonnet = message.toLowerCase().includes("ragiona bene") || message.toLowerCase().includes("codice");
     const modello = useSonnet ? "claude-3-5-sonnet-20241022" : "claude-3-5-haiku-20241022";
     
-    messages.push({ role: "user", content: message });
-    if (messages.length > 30) messages.splice(0, 2);
+    rawMessages.push({ role: "user", content: message });
+    if (rawMessages.length > 30) rawMessages.splice(0, 2);
+    
+    // FIX CRITICO: Claude va in crash se ci sono due "user" di fila. Accorpiamo i messaggi.
+    let validMessages = [];
+    for (let msg of rawMessages) {
+        if (validMessages.length === 0 && msg.role !== 'user') continue; 
+        if (validMessages.length > 0 && validMessages[validMessages.length - 1].role === msg.role) {
+            validMessages[validMessages.length - 1].content += " " + msg.content;
+        } else {
+            validMessages.push({ role: msg.role, content: msg.content });
+        }
+    }
     
     try {
-        const response = await anthropic.messages.create({ model: modello, max_tokens: useSonnet ? 800 : 250, system: buildSystem(), messages: messages });
+        const response = await anthropic.messages.create({ 
+            model: modello, 
+            max_tokens: useSonnet ? 800 : 250, 
+            system: buildSystem(), 
+            messages: validMessages 
+        });
         const reply = response.content[0].text.trim();
-        messages.push({ role: "assistant", content: reply });
+        rawMessages.push({ role: "assistant", content: reply });
         
         const lower = message.toLowerCase();
         if (["mi chiamo","lavoro","abito","mi piace","odio","ho comprato","mio figlio","mia figlia"].some(k => lower.includes(k))) {
@@ -68,14 +85,15 @@ async function kyraChat(message) {
         }
         return reply;
     } catch (error) {
+        console.error("Errore API:", error.message);
         if (error.status === 429) { isBlocked = true; setTimeout(() => { isBlocked = false; }, 30000); return "Troppe richieste al momento, sto raffreddando i circuiti."; }
-        return "Problema tecnico. Riprova.";
+        return "Connessione debole, non ho capito. Dimmi di nuovo.";
     }
 }
 
 const app = express();
 app.use(cors(), express.json());
-app.use(express.static(path.join(__dirname, "../public"))); // Il ponte per il frontend
+app.use(express.static(path.join(__dirname, "../public")));
 
 const KAPPS = { netflix: "https://www.netflix.com", maps: "https://maps.google.com", music: "https://music.youtube.com", googleone: "https://one.google.com" };
 
@@ -88,7 +106,7 @@ app.post("/api/action", (req, res) => {
 app.post("/api/command", async (req, res) => { 
     const { message, attachment } = req.body;
     let promptText = message || "";
-    if (attachment && attachment.type === 'image') promptText += "\n[L'utente ha allegato un'immagine. Analizzala e rispondi.]";
+    if (attachment && attachment.type === 'image') promptText += "\n[L'utente ha allegato un'immagine. Analizzala.]";
     const resp = await kyraChat(promptText); 
     if (resp) { console.log("🤖 Kyra: " + resp); speak(resp); } 
     res.json({ success: true, kyra: resp }); 
@@ -97,6 +115,4 @@ app.post("/api/command", async (req, res) => {
 app.get("/api/memoria", (req, res) => res.json(memoria));
 app.use((req, res) => res.status(404).json({ error: "Non trovato" }));
 
-app.listen(PORT, () => {
-    console.log(`\n🤖 KYRA v6.0 CORE ONLINE su porta ${PORT} | Sessioni: ${memoria.sessioni}\n`);
-});
+app.listen(PORT, () => console.log(`\n🤖 KYRA v6.0 CORE ONLINE su porta ${PORT} | Sessioni: ${memoria.sessioni}\n`));
