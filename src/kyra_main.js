@@ -68,7 +68,7 @@ async function kyraChat(message) {
 }
 
 const app = express();
-app.use(cors(), express.json());
+app.use(cors(), express.json()); app.use(express.static(path.join(__dirname, "../public")));
 
 
 
