@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kyra OS v6.0</title>
+    <title>Kyra OS v6.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
     {
@@ -111,7 +111,15 @@
                 try {
                     const res = await fetch(`${serverUrl}/api/command`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: prompt, attachment: userMsg.attachment }) });
                     const data = await res.json();
-                    if (data.kyra.toLowerCase().includes("apro youtube")) setActiveIframe("https://www.youtube.com/embed?autoplay=1");
+                    
+                    const lowerKyra = data.kyra.toLowerCase();
+                    // --- MOTORE DI AVVIO APP (VOCALE) ---
+                    if (lowerKyra.includes("apro youtube")) setActiveIframe("https://www.youtube.com/embed?autoplay=1");
+                    if (lowerKyra.includes("apro maps") || lowerKyra.includes("apro google maps")) window.open("https://maps.google.com", "_blank");
+                    if (lowerKyra.includes("apro netflix")) window.open("https://www.netflix.com", "_blank");
+                    if (lowerKyra.includes("apro music") || lowerKyra.includes("apro la musica")) window.open("https://music.youtube.com", "_blank");
+                    if (lowerKyra.includes("apro storage") || lowerKyra.includes("apro google one")) window.open("https://one.google.com", "_blank");
+                    
                     if (activeTab === 'CODICE' && data.kyra.includes("```")) { const codeMatch = data.kyra.match(/```[\s\S]*?\n([\s\S]*?)```/); if (codeMatch && codeMatch[1]) setCodeDraft(codeMatch[1]); }
                     setMessages(prev => [...prev, { id: Date.now()+1, text: data.kyra, sender: 'kyra' }]);
                     if (activeTab !== 'CHAT' && activeTab !== 'CODICE') setActiveTab('CHAT'); 
@@ -165,10 +173,10 @@
                                 <h2 className="text-xl font-black uppercase italic tracking-widest text-white mb-6">Ecosistema K-Apps</h2>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <AppCard icon={<Youtube className="text-red-500"/>} label="YouTube" onClick={() => setActiveIframe("[https://www.youtube.com/embed?autoplay=1](https://www.youtube.com/embed?autoplay=1)")} />
-                                    <AppCard icon={<Play className="text-slate-300"/>} label="Netflix" onClick={() => window.open('[https://netflix.com](https://netflix.com)')} />
-                                    <AppCard icon={<Map className="text-emerald-500"/>} label="Maps" onClick={() => sendAction('app', 'maps')} />
-                                    <AppCard icon={<MusicIcon className="text-purple-500"/>} label="Music" onClick={() => sendAction('app', 'music')} />
-                                    <AppCard icon={<Cloud className="text-blue-400"/>} label="G-One Storage" onClick={() => sendAction('app', 'googleone')} />
+                                    <AppCard icon={<Play className="text-slate-300"/>} label="Netflix" onClick={() => window.open('[https://www.netflix.com](https://www.netflix.com)', '_blank')} />
+                                    <AppCard icon={<Map className="text-emerald-500"/>} label="Maps" onClick={() => window.open('[https://maps.google.com](https://maps.google.com)', '_blank')} />
+                                    <AppCard icon={<MusicIcon className="text-purple-500"/>} label="Music" onClick={() => window.open('[https://music.youtube.com](https://music.youtube.com)', '_blank')} />
+                                    <AppCard icon={<Cloud className="text-blue-400"/>} label="G-One Storage" onClick={() => window.open('[https://one.google.com](https://one.google.com)', '_blank')} />
                                     <AppCard icon={<MonitorPlay className="text-indigo-400"/>} label="AiM Telemetria" onClick={() => alert("Modulo AiM Sport in sviluppo.")} />
                                 </div>
                             </div>
