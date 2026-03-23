@@ -41,7 +41,7 @@ FATTI:\n${fatti}`;
 function speak(testo) {
     if (!testo) return;
     const clean = testo.replace(/['"]/g, "").replace(/\n/g, " ").substring(0, 400);
-    try { exec(`termux-tts-speak -l it "${clean}"`, (err) => { if (err) exec(`termux-tts-speak "${clean}"`).catch(()=>{}); }); } catch(e) {}
+    try { exec(`termux-tts-speak -l it "${clean}"`, (err) => { if (err) ; }); } catch(e) {}
 }
 
 let rawMessages = [];
@@ -52,7 +52,7 @@ async function kyraChat(message) {
     if (!message || message.length < 2) return null;
     
     const useSonnet = message.toLowerCase().includes("ragiona bene") || message.toLowerCase().includes("codice");
-    const modello = useSonnet ? "claude-3-5-sonnet-20241022" : "claude-3-5-haiku-20241022";
+    const modello = useSonnet ? "claude-sonnet-4-5" : "claude-haiku-4-5-20251001";
     
     rawMessages.push({ role: "user", content: message });
     if (rawMessages.length > 30) rawMessages.splice(0, 2);
