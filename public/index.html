@@ -2,8 +2,8 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kyra OS v6.1</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Kyra OS v6.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="importmap">
     {
@@ -20,6 +20,12 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .glass-panel { background: rgba(30, 33, 43, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
         .kyra-eye { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        /* FIX 1: testo messaggi non esce dal box */
+        .msg-bubble { word-break: break-word; overflow-wrap: break-word; }
+        /* FIX 2: chat area non coperta dalla input bar */
+        .chat-scroll { padding-bottom: 140px; }
+        /* FIX 3: input bar safe area iPhone */
+        .input-bar { padding-bottom: env(safe-area-inset-bottom, 8px); }
     </style>
 </head>
 <body class="bg-[#0b0c10] text-slate-100 font-sans selection:bg-blue-500/40 overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
@@ -28,10 +34,10 @@
         import React, { useState, useEffect, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
         import { 
-            Send, Mic, MicOff, Database, Zap, Radio, MonitorPlay, Maximize2, X, 
-            Image as ImageIcon, FileText, HardDrive, Cpu, Wifi, Youtube, Map, Play, 
-            ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ShieldAlert, Monitor,
-            MessageSquare, Gamepad2, LayoutGrid, Terminal, CalendarDays, BrainCircuit, Code, Search,
+            Send, Mic, MicOff, Database, Zap, Radio, MonitorPlay, X, 
+            Image as ImageIcon, FileText, Wifi, Youtube, Map, Play, 
+            ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ShieldAlert,
+            MessageSquare, Gamepad2, LayoutGrid, Terminal, CalendarDays, BrainCircuit, Code,
             Eye, Lightbulb, Music as MusicIcon, Cloud
         } from 'lucide-react';
 
@@ -41,10 +47,10 @@
             if (isListening) { eyeColor = "bg-emerald-400 shadow-[0_0_25px_rgba(52,211,153,1)]"; eyeAnim = "h-10 scale-110"; } 
             else if (isGenerating) { eyeColor = "bg-fuchsia-500 shadow-[0_0_20px_rgba(217,70,239,0.9)]"; eyeAnim = "h-6 animate-bounce"; }
             return (
-                <div className="w-20 h-14 md:w-24 md:h-16 bg-[#050608] rounded-2xl border-2 border-white/10 flex items-center justify-center gap-3 shadow-inner relative overflow-hidden group">
+                <div className="w-16 h-11 md:w-24 md:h-16 bg-[#050608] rounded-2xl border-2 border-white/10 flex items-center justify-center gap-3 shadow-inner relative overflow-hidden group">
                     <div className="absolute inset-0 bg-blue-500/5 opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                    <div className={`w-3 md:w-4 rounded-full kyra-eye ${eyeColor} ${eyeAnim}`}></div>
-                    <div className={`w-3 md:w-4 rounded-full kyra-eye ${eyeColor} ${eyeAnim}`}></div>
+                    <div className={`w-2.5 md:w-4 rounded-full kyra-eye ${eyeColor} ${eyeAnim}`}></div>
+                    <div className={`w-2.5 md:w-4 rounded-full kyra-eye ${eyeColor} ${eyeAnim}`}></div>
                 </div>
             );
         };
@@ -64,6 +70,7 @@
             const [pi4Status, setPi4Status] = useState('offline');
             const [codeDraft, setCodeDraft] = useState('// Chiedi a Kyra di generare uno script Python o JS...\n// Apparirà qui, pronto per essere inviato a Termux.');
             const [agendaItems, setAgendaItems] = useState([{ id: 1, text: "Completare montaggio PiCar-X", type: "user", date: "Oggi" }]);
+            const [micError, setMicError] = useState('');
             
             const chatEndRef = useRef(null);
             const recognitionRef = useRef(null);
@@ -73,180 +80,363 @@
                 fetch(`${serverUrl}/api/memoria`).then(res => res.json())
                 .then(data => setMemoryStats({ sessioni: data.sessioni || 0, fattiCount: data.fatti?.length || 0, fattiList: data.fatti || [] })).catch(e => console.log("Offline"));
             }, [serverUrl, messages]);
-            useEffect(() => { if(activeTab === 'CHAT') chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, activeTab]);
 
-            useEffect(() => {
+            useEffect(() => { 
+                if(activeTab === 'CHAT') chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
+            }, [messages, activeTab]);
+
+            // FIX 3: Microfono migliorato per iOS Safari
+            const initRecognition = () => {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (SpeechRecognition) {
-                    const recognition = new SpeechRecognition();
-                    recognition.lang = 'it-IT'; recognition.continuous = handsFree; recognition.interimResults = false;
-                    recognition.onstart = () => setIsListening(true);
-                    recognition.onend = () => { setIsListening(false); if (handsFree && !isGenerating) { try { recognition.start(); } catch(e) {} } };
-                    recognition.onerror = (e) => { if (handsFree && e.error !== 'aborted' && !isGenerating) { setTimeout(() => { try { recognition.start(); } catch(err){} }, 1000); } else { setIsListening(false); } };
-                    recognition.onresult = (event) => {
-                        const transcript = event.results[event.resultIndex][0].transcript.toLowerCase();
-                        if (handsFree) {
-                            if (transcript.includes("kyra")) {
-                                const command = transcript.substring(transcript.indexOf("kyra") + 4).trim();
-                                setInputText(transcript); sendMessageToKyra(command.length > 2 ? command : "sono qui");
-                            }
-                        } else { setInputText(transcript); sendMessageToKyra(transcript); recognition.stop(); }
-                    };
-                    recognitionRef.current = recognition;
+                if (!SpeechRecognition) {
+                    setMicError('Microfono non supportato su questo browser');
+                    return null;
                 }
-                return () => recognitionRef.current?.abort();
-            }, [handsFree, isGenerating]);
+                const recognition = new SpeechRecognition();
+                recognition.lang = 'it-IT';
+                recognition.continuous = false; // iOS non supporta continuous=true
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                recognition.onstart = () => { setIsListening(true); setMicError(''); };
+                recognition.onend = () => { 
+                    setIsListening(false);
+                    if (handsFree && !isGenerating) { 
+                        setTimeout(() => { try { recognition.start(); } catch(e) {} }, 300); 
+                    } 
+                };
+                recognition.onerror = (e) => { 
+                    setIsListening(false);
+                    if (e.error === 'not-allowed') setMicError('Permesso microfono negato');
+                    else if (e.error === 'network') setMicError('Errore rete mic');
+                };
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    if (handsFree) {
+                        if (transcript.toLowerCase().includes("kyra")) {
+                            const command = transcript.toLowerCase().substring(transcript.toLowerCase().indexOf("kyra") + 4).trim();
+                            sendMessageToKyra(command.length > 2 ? command : "sono qui");
+                        }
+                    } else { 
+                        setInputText(transcript); 
+                        sendMessageToKyra(transcript);
+                    }
+                };
+                return recognition;
+            };
 
-            const toggleVoiceInput = () => { if (isListening) { setHandsFree(false); recognitionRef.current?.stop(); } else { setInputText(''); try { recognitionRef.current?.start(); } catch(e) {} } };
-            const toggleHandsFree = () => { setHandsFree(!handsFree); if (!handsFree) { setInputText(''); try { recognitionRef.current?.start(); } catch(e) {} } else { recognitionRef.current?.stop(); } };
-            const handleFileSelect = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => setAttachment({ type: 'image', data: event.target.result, name: file.name }); reader.readAsDataURL(file); e.target.value = null; };
-            const sendAction = (type, action, payload = {}) => { fetch(`${serverUrl}/api/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, action, ...payload }) }).catch(e => console.error("Offline")); };
+            const toggleVoiceInput = () => { 
+                if (isListening) { 
+                    recognitionRef.current?.stop(); 
+                    setIsListening(false);
+                } else { 
+                    setInputText(''); 
+                    setMicError('');
+                    const rec = initRecognition();
+                    if (rec) { recognitionRef.current = rec; try { rec.start(); } catch(e) { setMicError('Errore avvio mic'); } }
+                } 
+            };
+
+            const toggleHandsFree = () => { 
+                const newVal = !handsFree;
+                setHandsFree(newVal); 
+                if (newVal) { 
+                    const rec = initRecognition();
+                    if (rec) { recognitionRef.current = rec; try { rec.start(); } catch(e) {} }
+                } else { 
+                    recognitionRef.current?.stop(); 
+                } 
+            };
+
+            const handleFileSelect = (e) => { 
+                const file = e.target.files[0]; 
+                if (!file) return; 
+                const reader = new FileReader(); 
+                reader.onload = (event) => setAttachment({ type: 'image', data: event.target.result, name: file.name }); 
+                reader.readAsDataURL(file); 
+                e.target.value = null; 
+            };
+
+            const sendAction = (type, action, payload = {}) => { 
+                fetch(`${serverUrl}/api/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, action, ...payload }) }).catch(e => console.error("Offline")); 
+            };
 
             const sendMessageToKyra = async (textToProcess) => {
-                if ((!textToProcess.trim() && !attachment) || isGenerating) return;
+                if ((!textToProcess || !textToProcess.trim() && !attachment) || isGenerating) return;
                 const userMsg = { id: Date.now(), text: textToProcess, sender: 'user', attachment: attachment };
-                setMessages(prev => [...prev, userMsg]); setInputText(''); setAttachment(null); setIsGenerating(true);
+                setMessages(prev => [...prev, userMsg]); 
+                setInputText(''); 
+                setAttachment(null); 
+                setIsGenerating(true);
                 let prompt = textToProcess;
                 if (activeTab === 'CODICE') prompt = `[Richiesta Codice Termux]: ${textToProcess}`;
                 try {
-                    const res = await fetch(`${serverUrl}/api/command`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: prompt, attachment: userMsg.attachment }) });
+                    const res = await fetch(`${serverUrl}/api/command`, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ message: prompt, attachment: userMsg.attachment }) 
+                    });
                     const data = await res.json();
-                    
                     const lowerKyra = data.kyra.toLowerCase();
-                    // --- MOTORE DI AVVIO APP (VOCALE) ---
                     if (lowerKyra.includes("apro youtube")) setActiveIframe("https://www.youtube.com/embed?autoplay=1");
-                    if (lowerKyra.includes("apro maps") || lowerKyra.includes("apro google maps")) window.open("https://maps.google.com", "_blank");
+                    if (lowerKyra.includes("apro maps")) window.open("https://maps.google.com", "_blank");
                     if (lowerKyra.includes("apro netflix")) window.open("https://www.netflix.com", "_blank");
-                    if (lowerKyra.includes("apro music") || lowerKyra.includes("apro la musica")) window.open("https://music.youtube.com", "_blank");
-                    if (lowerKyra.includes("apro storage") || lowerKyra.includes("apro google one")) window.open("https://one.google.com", "_blank");
-                    
-                    if (activeTab === 'CODICE' && data.kyra.includes("```")) { const codeMatch = data.kyra.match(/```[\s\S]*?\n([\s\S]*?)```/); if (codeMatch && codeMatch[1]) setCodeDraft(codeMatch[1]); }
+                    if (lowerKyra.includes("apro music")) window.open("https://music.youtube.com", "_blank");
+                    if (activeTab === 'CODICE' && data.kyra.includes("```")) { 
+                        const codeMatch = data.kyra.match(/```[\s\S]*?\n([\s\S]*?)```/); 
+                        if (codeMatch && codeMatch[1]) setCodeDraft(codeMatch[1]); 
+                    }
                     setMessages(prev => [...prev, { id: Date.now()+1, text: data.kyra, sender: 'kyra' }]);
                     if (activeTab !== 'CHAT' && activeTab !== 'CODICE') setActiveTab('CHAT'); 
-                } catch (e) { console.error(e); } finally { setIsGenerating(false); }
+                } catch (e) { 
+                    setMessages(prev => [...prev, { id: Date.now()+1, text: "Errore connessione al server Kyra.", sender: 'kyra' }]);
+                } finally { 
+                    setIsGenerating(false); 
+                }
             };
 
             const connectPi4 = () => { setPi4Status('connecting'); setTimeout(() => setPi4Status('online'), 2000); };
-            const TABS = [ { id: 'CHAT', icon: MessageSquare, label: 'Chat' }, { id: 'ROBOT', icon: Gamepad2, label: 'Robot' }, { id: 'APPS', icon: LayoutGrid, label: 'Apps' }, { id: 'CODICE', icon: Terminal, label: 'Codice' }, { id: 'AGENDA', icon: CalendarDays, label: 'Agenda' }, { id: 'MEMORIA', icon: BrainCircuit, label: 'Memoria' } ];
+
+            const TABS = [ 
+                { id: 'CHAT', icon: MessageSquare, label: 'Chat' }, 
+                { id: 'ROBOT', icon: Gamepad2, label: 'Robot' }, 
+                { id: 'APPS', icon: LayoutGrid, label: 'Apps' }, 
+                { id: 'CODICE', icon: Terminal, label: 'Codice' }, 
+                { id: 'AGENDA', icon: CalendarDays, label: 'Agenda' }, 
+                { id: 'MEMORIA', icon: BrainCircuit, label: 'Memoria' } 
+            ];
 
             const renderTabContent = () => {
                 switch(activeTab) {
                     case 'CHAT': return (
-                            <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pb-40 no-scrollbar">
-                                {messages.length === 0 && ( <div className="h-full flex flex-col items-center justify-center opacity-30 text-center space-y-4"><Radio size={80} className="text-blue-500/50" /><h3 className="text-2xl font-black uppercase italic tracking-[0.2em] text-white">Kyra Core</h3></div> )}
-                                {messages.map((msg) => (
-                                    <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[85%] md:max-w-[70%] p-6 rounded-[2rem] shadow-xl relative ${msg.sender === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'glass-panel border border-white/10 text-slate-100 rounded-tl-none'}`}>
-                                            <div className={`absolute -top-3 ${msg.sender === 'user' ? 'right-6' : 'left-6'} text-[9px] font-black uppercase tracking-widest text-slate-400 bg-[#12141c] px-3 py-1 rounded-full border border-white/5`}>{msg.sender === 'user' ? 'Riccardo' : 'Kyra'}</div>
-                                            {msg.attachment && msg.attachment.type === 'image' && ( <div className="mb-4 rounded-xl overflow-hidden border border-white/20 cursor-pointer" onClick={() => setEnlargedImage(msg.attachment.data)}><img src={msg.attachment.data} className="max-w-full h-auto max-h-64 object-cover" /></div> )}
-                                            <p className="text-base font-medium leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                        <div className="flex-1 overflow-y-auto p-3 md:p-8 space-y-4 chat-scroll no-scrollbar">
+                            {messages.length === 0 && ( 
+                                <div className="h-full flex flex-col items-center justify-center opacity-30 text-center space-y-4 pt-20">
+                                    <Radio size={60} className="text-blue-500/50" />
+                                    <h3 className="text-xl font-black uppercase italic tracking-[0.2em] text-white">Kyra Core</h3>
+                                </div> 
+                            )}
+                            {messages.map((msg) => (
+                                <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    {/* FIX 1+2: testo piccolo mobile, no overflow */}
+                                    <div className={`max-w-[88%] md:max-w-[70%] p-3 md:p-5 rounded-[1.5rem] shadow-xl relative msg-bubble ${msg.sender === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'glass-panel border border-white/10 text-slate-100 rounded-tl-none'}`}>
+                                        <div className={`absolute -top-3 ${msg.sender === 'user' ? 'right-4' : 'left-4'} text-[8px] font-black uppercase tracking-widest text-slate-400 bg-[#12141c] px-2 py-0.5 rounded-full border border-white/5`}>
+                                            {msg.sender === 'user' ? 'Riccardo' : 'Kyra'}
                                         </div>
+                                        {msg.attachment && msg.attachment.type === 'image' && ( 
+                                            <div className="mb-3 rounded-xl overflow-hidden border border-white/20 cursor-pointer" onClick={() => setEnlargedImage(msg.attachment.data)}>
+                                                <img src={msg.attachment.data} className="max-w-full h-auto max-h-48 object-cover" />
+                                            </div> 
+                                        )}
+                                        {/* FIX 1: text-sm su mobile, text-base su desktop */}
+                                        <p className="text-sm md:text-base font-medium leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                                     </div>
-                                ))}
-                                {isGenerating && <div className="text-[10px] font-black uppercase text-fuchsia-500 animate-pulse flex items-center gap-2"><div className="w-2 h-2 bg-fuchsia-500 rounded-full"></div> Elaborazione...</div>}
-                                <div ref={chatEndRef} />
-                            </div>
-                        );
+                                </div>
+                            ))}
+                            {isGenerating && (
+                                <div className="text-[10px] font-black uppercase text-fuchsia-500 animate-pulse flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-fuchsia-500 rounded-full"></div> Elaborazione...
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+                    );
+
                     case 'ROBOT': return (
-                            <div className="p-6 md:p-12 space-y-8 flex-1 overflow-y-auto pb-40">
-                                <div className="flex items-center justify-between p-6 glass-panel rounded-3xl border border-white/10">
-                                    <div><h2 className="text-xl font-black uppercase italic tracking-widest text-white">PiCar-X Link</h2><p className="text-xs font-bold text-slate-400">Status: {pi4Status.toUpperCase()}</p></div>
-                                    {pi4Status !== 'online' ? ( <button onClick={connectPi4} className="px-6 py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600 hover:text-white rounded-xl text-sm font-bold uppercase transition-all">Connetti</button> ) : ( <span className="flex items-center gap-2 text-emerald-400 font-bold bg-emerald-500/10 px-4 py-2 rounded-xl"><Wifi size={18}/> Connesso (192.168.1.100)</span> )}
+                        <div className="p-4 md:p-12 space-y-6 flex-1 overflow-y-auto chat-scroll">
+                            <div className="flex items-center justify-between p-4 glass-panel rounded-3xl border border-white/10">
+                                <div>
+                                    <h2 className="text-base md:text-xl font-black uppercase italic tracking-widest text-white">PiCar-X Link</h2>
+                                    <p className="text-xs font-bold text-slate-400">Status: {pi4Status.toUpperCase()}</p>
                                 </div>
-                                <div className={`transition-opacity ${pi4Status !== 'online' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
-                                    <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto mb-8">
-                                        <div/><button className="p-6 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 hover:text-white flex justify-center active:scale-90"><ArrowUp size={24}/></button><div/>
-                                        <button className="p-6 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 hover:text-white flex justify-center active:scale-90"><ArrowLeft size={24}/></button>
-                                        <button className="p-6 bg-red-500/20 text-red-500 border border-red-500/30 rounded-2xl hover:bg-red-500 flex justify-center active:scale-90"><ShieldAlert size={24}/></button>
-                                        <button className="p-6 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 hover:text-white flex justify-center active:scale-90"><ArrowRight size={24}/></button>
-                                        <div/><button className="p-6 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 hover:text-white flex justify-center active:scale-90"><ArrowDown size={24}/></button><div/>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-                                        <button onClick={()=>sendAction('hw', 'sentry')} className="p-4 glass-panel rounded-2xl border border-white/10 hover:bg-emerald-500/20 hover:text-emerald-400 flex flex-col items-center gap-2"><Eye size={20}/><span className="text-[10px] font-black uppercase tracking-widest">Modalità Vedetta</span></button>
-                                        <button onClick={()=>sendAction('hw', 'lights')} className="p-4 glass-panel rounded-2xl border border-white/10 hover:bg-yellow-500/20 hover:text-yellow-400 flex flex-col items-center gap-2"><Lightbulb size={20}/><span className="text-[10px] font-black uppercase tracking-widest">Fari Notturni</span></button>
-                                    </div>
+                                {pi4Status !== 'online' ? ( 
+                                    <button onClick={connectPi4} className="px-4 py-2 bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600 hover:text-white rounded-xl text-sm font-bold uppercase transition-all">Connetti</button> 
+                                ) : ( 
+                                    <span className="flex items-center gap-2 text-emerald-400 font-bold bg-emerald-500/10 px-3 py-2 rounded-xl text-xs"><Wifi size={16}/> Online</span> 
+                                )}
+                            </div>
+                            <div className={`transition-opacity ${pi4Status !== 'online' ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
+                                <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto mb-6">
+                                    <div/><button onClick={()=>sendAction('hw','forward')} className="p-5 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 flex justify-center active:scale-90"><ArrowUp size={22}/></button><div/>
+                                    <button onClick={()=>sendAction('hw','left')} className="p-5 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 flex justify-center active:scale-90"><ArrowLeft size={22}/></button>
+                                    <button onClick={()=>sendAction('hw','stop')} className="p-5 bg-red-500/20 text-red-500 border border-red-500/30 rounded-2xl hover:bg-red-500 flex justify-center active:scale-90"><ShieldAlert size={22}/></button>
+                                    <button onClick={()=>sendAction('hw','right')} className="p-5 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 flex justify-center active:scale-90"><ArrowRight size={22}/></button>
+                                    <div/><button onClick={()=>sendAction('hw','backward')} className="p-5 glass-panel rounded-2xl border border-white/10 hover:bg-blue-600 flex justify-center active:scale-90"><ArrowDown size={22}/></button><div/>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto">
+                                    <button onClick={()=>sendAction('hw','sentry')} className="p-4 glass-panel rounded-2xl border border-white/10 hover:bg-emerald-500/20 hover:text-emerald-400 flex flex-col items-center gap-2"><Eye size={20}/><span className="text-[9px] font-black uppercase tracking-widest">Vedetta</span></button>
+                                    <button onClick={()=>sendAction('hw','lights')} className="p-4 glass-panel rounded-2xl border border-white/10 hover:bg-yellow-500/20 hover:text-yellow-400 flex flex-col items-center gap-2"><Lightbulb size={20}/><span className="text-[9px] font-black uppercase tracking-widest">Fari</span></button>
                                 </div>
                             </div>
-                        );
+                        </div>
+                    );
+
                     case 'APPS': return (
-                            <div className="p-6 md:p-12 space-y-6 flex-1 overflow-y-auto pb-40">
-                                <h2 className="text-xl font-black uppercase italic tracking-widest text-white mb-6">Ecosistema K-Apps</h2>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <AppCard icon={<Youtube className="text-red-500"/>} label="YouTube" onClick={() => setActiveIframe("[https://www.youtube.com/embed?autoplay=1](https://www.youtube.com/embed?autoplay=1)")} />
-                                    <AppCard icon={<Play className="text-slate-300"/>} label="Netflix" onClick={() => window.open('[https://www.netflix.com](https://www.netflix.com)', '_blank')} />
-                                    <AppCard icon={<Map className="text-emerald-500"/>} label="Maps" onClick={() => window.open('[https://maps.google.com](https://maps.google.com)', '_blank')} />
-                                    <AppCard icon={<MusicIcon className="text-purple-500"/>} label="Music" onClick={() => window.open('[https://music.youtube.com](https://music.youtube.com)', '_blank')} />
-                                    <AppCard icon={<Cloud className="text-blue-400"/>} label="G-One Storage" onClick={() => window.open('[https://one.google.com](https://one.google.com)', '_blank')} />
-                                    <AppCard icon={<MonitorPlay className="text-indigo-400"/>} label="AiM Telemetria" onClick={() => alert("Modulo AiM Sport in sviluppo.")} />
-                                </div>
+                        <div className="p-4 md:p-12 space-y-4 flex-1 overflow-y-auto chat-scroll">
+                            <h2 className="text-base md:text-xl font-black uppercase italic tracking-widest text-white">K-Apps</h2>
+                            <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                <AppCard icon={<Youtube className="text-red-500" size={22}/>} label="YouTube" onClick={() => setActiveIframe("https://www.youtube.com/embed?autoplay=1")} />
+                                <AppCard icon={<Play className="text-slate-300" size={22}/>} label="Netflix" onClick={() => window.open('https://www.netflix.com', '_blank')} />
+                                <AppCard icon={<Map className="text-emerald-500" size={22}/>} label="Maps" onClick={() => window.open('https://maps.google.com', '_blank')} />
+                                <AppCard icon={<MusicIcon className="text-purple-500" size={22}/>} label="Music" onClick={() => window.open('https://music.youtube.com', '_blank')} />
+                                <AppCard icon={<Cloud className="text-blue-400" size={22}/>} label="G-One" onClick={() => window.open('https://one.google.com', '_blank')} />
+                                <AppCard icon={<MonitorPlay className="text-indigo-400" size={22}/>} label="AiM" onClick={() => alert("Modulo AiM in sviluppo.")} />
                             </div>
-                        );
+                        </div>
+                    );
+
                     case 'CODICE': return (
-                            <div className="p-6 md:p-12 flex flex-col h-full pb-40 gap-6">
-                                <div className="flex justify-between items-end"><div><h2 className="text-xl font-black uppercase italic tracking-widest text-white">Termux IDE</h2></div></div>
-                                <div className="flex-1 glass-panel border border-white/10 rounded-3xl p-4 overflow-hidden flex flex-col shadow-2xl">
-                                    <div className="flex items-center gap-2 mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500"><Code size={14}/> File Draft</div>
-                                    <textarea value={codeDraft} onChange={(e) => setCodeDraft(e.target.value)} className="w-full flex-1 bg-black/50 rounded-xl p-4 font-mono text-sm text-green-400 resize-none outline-none border border-transparent focus:border-blue-500/30" spellCheck="false"></textarea>
-                                </div>
-                                <button onClick={() => sendAction('hw', 'termux_run', { code: codeDraft })} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.4)] flex justify-center items-center gap-3 active:scale-95"><Terminal size={20} /> Esegui su Termux</button>
+                        <div className="p-4 md:p-12 flex flex-col h-full chat-scroll gap-4">
+                            <h2 className="text-base md:text-xl font-black uppercase italic tracking-widest text-white">Termux IDE</h2>
+                            <div className="flex-1 glass-panel border border-white/10 rounded-3xl p-3 overflow-hidden flex flex-col shadow-2xl">
+                                <div className="flex items-center gap-2 mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-slate-500"><Code size={14}/> File Draft</div>
+                                <textarea value={codeDraft} onChange={(e) => setCodeDraft(e.target.value)} className="w-full flex-1 bg-black/50 rounded-xl p-3 font-mono text-xs md:text-sm text-green-400 resize-none outline-none border border-transparent focus:border-blue-500/30" spellCheck="false"></textarea>
                             </div>
-                        );
+                            <button onClick={() => sendAction('hw', 'termux_run', { code: codeDraft })} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest flex justify-center items-center gap-3 active:scale-95"><Terminal size={20} /> Esegui su Termux</button>
+                        </div>
+                    );
+
                     case 'MEMORIA': return (
-                            <div className="p-6 md:p-12 space-y-6 flex-1 overflow-y-auto pb-40">
-                                <div className="flex justify-between items-center glass-panel p-6 rounded-3xl border border-white/10"><div><h2 className="text-xl font-black uppercase italic tracking-widest text-white">Database Fatti</h2></div><Database size={32} className="text-emerald-500" /></div>
-                                <div className="space-y-3">
-                                    {memoryStats.fattiList && memoryStats.fattiList.length > 0 ? memoryStats.fattiList.map((fatto, i) => ( <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex gap-4 items-start"><div className="mt-1 text-blue-500"><BrainCircuit size={16}/></div><div><p className="text-sm font-medium text-slate-200">{fatto.fatto}</p><p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">{new Date(fatto.data).toLocaleDateString()}</p></div></div> )) : <div className="p-8 text-center text-slate-500 font-bold text-sm">Nessun fatto in memoria.</div>}
-                                </div>
+                        <div className="p-4 md:p-12 space-y-4 flex-1 overflow-y-auto chat-scroll">
+                            <div className="flex justify-between items-center glass-panel p-4 rounded-3xl border border-white/10">
+                                <h2 className="text-base md:text-xl font-black uppercase italic tracking-widest text-white">Database Fatti</h2>
+                                <Database size={28} className="text-emerald-500" />
                             </div>
-                        );
+                            <div className="space-y-3">
+                                {memoryStats.fattiList && memoryStats.fattiList.length > 0 ? memoryStats.fattiList.map((fatto, i) => ( 
+                                    <div key={i} className="p-3 bg-white/5 rounded-2xl border border-white/5 flex gap-3 items-start">
+                                        <div className="mt-1 text-blue-500 shrink-0"><BrainCircuit size={14}/></div>
+                                        <div><p className="text-sm font-medium text-slate-200">{fatto.fatto}</p><p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">{new Date(fatto.data).toLocaleDateString()}</p></div>
+                                    </div> 
+                                )) : <div className="p-8 text-center text-slate-500 font-bold text-sm">Nessun fatto in memoria.</div>}
+                            </div>
+                        </div>
+                    );
+
                     case 'AGENDA': return (
-                            <div className="p-6 md:p-12 space-y-6 flex-1 overflow-y-auto pb-40">
-                                <h2 className="text-xl font-black uppercase italic tracking-widest text-white mb-6">Progetti & Eventi</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {agendaItems.map(item => ( <div key={item.id} className="p-6 glass-panel rounded-3xl border border-white/10 flex flex-col gap-4 hover:border-blue-500/30 transition-colors"><div className="flex justify-between items-center"><span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${item.type === 'kyra' ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-blue-500/20 text-blue-400'}`}>{item.type === 'kyra' ? 'Auto-Log' : 'Task Utente'}</span><span className="text-xs font-bold text-slate-500">{item.date}</span></div><p className="text-sm font-medium text-slate-200">{item.text}</p></div> ))}
-                                </div>
+                        <div className="p-4 md:p-12 space-y-4 flex-1 overflow-y-auto chat-scroll">
+                            <h2 className="text-base md:text-xl font-black uppercase italic tracking-widest text-white">Progetti & Eventi</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {agendaItems.map(item => ( 
+                                    <div key={item.id} className="p-4 glass-panel rounded-3xl border border-white/10 flex flex-col gap-3 hover:border-blue-500/30 transition-colors">
+                                        <div className="flex justify-between items-center">
+                                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${item.type === 'kyra' ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-blue-500/20 text-blue-400'}`}>{item.type === 'kyra' ? 'Auto-Log' : 'Task'}</span>
+                                            <span className="text-xs font-bold text-slate-500">{item.date}</span>
+                                        </div>
+                                        <p className="text-sm font-medium text-slate-200">{item.text}</p>
+                                    </div> 
+                                ))}
                             </div>
-                        );
+                        </div>
+                    );
+
                     default: return null;
                 }
             };
 
             return (
                 <div className="flex h-screen w-full relative">
-                    {enlargedImage && ( <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-lg flex items-center justify-center p-4"><button onClick={() => setEnlargedImage(null)} className="absolute top-6 right-6 p-3 bg-white/10 rounded-full hover:bg-red-500 hover:text-white"><X size={24}/></button><img src={enlargedImage} className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl border border-white/10" /></div> )}
-                    {activeIframe && ( <div className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex flex-col p-4 md:p-10 animate-in fade-in zoom-in-95 duration-300"><div className="flex justify-between items-center mb-4 bg-slate-900 p-4 rounded-2xl border border-white/10"><div className="flex items-center gap-3"><MonitorPlay className="text-blue-500"/><h3 className="text-xl font-black italic text-white uppercase tracking-widest">K-Monitor</h3></div><button onClick={() => setActiveIframe(null)} className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-xl"><X size={24}/></button></div><div className="flex-1 rounded-3xl overflow-hidden border-2 border-blue-500/30 bg-black"><iframe src={activeIframe} className="w-full h-full" allow="autoplay; encrypted-media; fullscreen" title="K-Monitor"></iframe></div></div> )}
+                    {/* Immagine ingrandita */}
+                    {enlargedImage && ( 
+                        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-lg flex items-center justify-center p-4">
+                            <button onClick={() => setEnlargedImage(null)} className="absolute top-6 right-6 p-3 bg-white/10 rounded-full hover:bg-red-500 hover:text-white"><X size={24}/></button>
+                            <img src={enlargedImage} className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl border border-white/10" />
+                        </div> 
+                    )}
 
+                    {/* iFrame overlay */}
+                    {activeIframe && ( 
+                        <div className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex flex-col p-4 md:p-10">
+                            <div className="flex justify-between items-center mb-4 bg-slate-900 p-4 rounded-2xl border border-white/10">
+                                <h3 className="text-lg font-black italic text-white uppercase tracking-widest">K-Monitor</h3>
+                                <button onClick={() => setActiveIframe(null)} className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-xl"><X size={24}/></button>
+                            </div>
+                            <div className="flex-1 rounded-3xl overflow-hidden border-2 border-blue-500/30 bg-black">
+                                <iframe src={activeIframe} className="w-full h-full" allow="autoplay; encrypted-media; fullscreen" title="K-Monitor"></iframe>
+                            </div>
+                        </div> 
+                    )}
+
+                    {/* Nav desktop */}
                     <nav className="w-20 md:w-24 border-r border-white/5 bg-[#0a0b10]/90 backdrop-blur-2xl flex flex-col items-center py-6 z-30 shrink-0 hidden md:flex">
                         <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.5)] mb-8"><Zap size={20} className="text-white"/></div>
                         <div className="flex flex-col gap-6 w-full px-4">
-                            {TABS.map(tab => ( <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all ${activeTab === tab.id ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}><tab.icon size={22} strokeWidth={activeTab === tab.id ? 2.5 : 2} /><span className="text-[8px] font-black uppercase tracking-widest">{tab.label}</span>{activeTab === tab.id && <div className="absolute -right-4 w-1 h-8 bg-blue-500 rounded-l-full shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>}</button> ))}
+                            {TABS.map(tab => ( 
+                                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all ${activeTab === tab.id ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>
+                                    <tab.icon size={22} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
+                                    <span className="text-[8px] font-black uppercase tracking-widest">{tab.label}</span>
+                                    {activeTab === tab.id && <div className="absolute -right-4 w-1 h-8 bg-blue-500 rounded-l-full shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>}
+                                </button> 
+                            ))}
                         </div>
                     </nav>
 
-                    <nav className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0a0b10]/95 backdrop-blur-xl border-b border-white/10 z-40 flex items-center px-4 gap-4 overflow-x-auto no-scrollbar">
-                        <div className="w-8 h-8 shrink-0 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg"><Zap size={16} className="text-white"/></div>
-                        {TABS.map(tab => ( <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${activeTab === tab.id ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-500'}`}><tab.icon size={16} /><span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span></button> ))}
+                    {/* Nav mobile top */}
+                    <nav className="md:hidden fixed top-0 left-0 right-0 h-14 bg-[#0a0b10]/95 backdrop-blur-xl border-b border-white/10 z-40 flex items-center px-3 gap-2 overflow-x-auto no-scrollbar">
+                        <div className="w-7 h-7 shrink-0 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg"><Zap size={14} className="text-white"/></div>
+                        {TABS.map(tab => ( 
+                            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all ${activeTab === tab.id ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-500'}`}>
+                                <tab.icon size={14} />
+                                <span className="text-[9px] font-black uppercase tracking-widest">{tab.label}</span>
+                            </button> 
+                        ))}
                     </nav>
 
-                    <div className="flex-1 flex flex-col relative w-full pt-16 md:pt-0">
-                        <header className="absolute top-4 right-6 z-30 flex items-center gap-4 pointer-events-none"><KyraFace isListening={isListening} isGenerating={isGenerating} /></header>
+                    {/* Main content */}
+                    <div className="flex-1 flex flex-col relative w-full pt-14 md:pt-0 overflow-hidden">
+                        {/* Kyra face in alto a destra */}
+                        <header className="absolute top-2 md:top-4 right-4 z-30 flex items-center gap-4 pointer-events-none">
+                            <KyraFace isListening={isListening} isGenerating={isGenerating} />
+                        </header>
+
                         {renderTabContent()}
-                        <div className="absolute bottom-4 md:bottom-8 left-4 right-4 md:left-12 md:right-12 z-40 pointer-events-auto">
-                            {attachment && ( <div className="absolute -top-14 left-4 glass-panel border border-blue-500/50 p-2 rounded-xl flex items-center gap-3 shadow-2xl">{attachment.type === 'image' ? <img src={attachment.data} className="w-10 h-10 object-cover rounded-lg" /> : <div className="w-10 h-10 bg-white/5 flex items-center justify-center rounded-lg"><FileText size={16} className="text-slate-300" /></div>}<div className="flex flex-col"><span className="text-[9px] font-black uppercase text-blue-400">Allegato</span><span className="text-xs text-white max-w-[100px] truncate">{attachment.name}</span></div><button onClick={() => setAttachment(null)} className="p-1.5 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-lg ml-1"><X size={14} /></button></div> )}
-                            <form onSubmit={(e) => { e.preventDefault(); sendMessageToKyra(inputText); }} className="glass-panel border border-white/10 rounded-[2.5rem] p-2 flex flex-col gap-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                                <div className="flex items-center px-4 pt-2 justify-between">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">{activeTab} MODE</span>
-                                    <div className="flex items-center gap-3">
-                                        <button type="button" onClick={toggleHandsFree} className={`w-10 h-5 rounded-full transition-colors relative flex items-center ${handsFree ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`}><div className={`w-3 h-3 bg-white rounded-full absolute transition-transform ${handsFree ? 'translate-x-6' : 'translate-x-1'}`}></div></button>
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 hidden md:block">{handsFree ? "Wake Word ('Kyra')" : "Mic Spento"}</span>
+
+                        {/* Input bar fixed in basso */}
+                        <div className="absolute bottom-0 left-0 right-0 z-40 px-3 pb-3 md:px-10 md:pb-6 input-bar">
+                            {/* Errore microfono */}
+                            {micError && (
+                                <div className="mb-2 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-xl text-xs text-red-400 font-bold text-center">
+                                    ⚠️ {micError}
+                                </div>
+                            )}
+                            {/* Allegato preview */}
+                            {attachment && ( 
+                                <div className="mb-2 glass-panel border border-blue-500/50 p-2 rounded-xl flex items-center gap-2 shadow-2xl w-fit">
+                                    {attachment.type === 'image' ? <img src={attachment.data} className="w-9 h-9 object-cover rounded-lg" /> : <div className="w-9 h-9 bg-white/5 flex items-center justify-center rounded-lg"><FileText size={14} className="text-slate-300" /></div>}
+                                    <span className="text-xs text-white max-w-[80px] truncate">{attachment.name}</span>
+                                    <button onClick={() => setAttachment(null)} className="p-1 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-lg"><X size={12} /></button>
+                                </div> 
+                            )}
+                            <form onSubmit={(e) => { e.preventDefault(); sendMessageToKyra(inputText); }} className="glass-panel border border-white/10 rounded-[2rem] p-1.5 flex flex-col gap-1 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                                {/* Toggle hands-free */}
+                                <div className="flex items-center px-3 pt-1 justify-between">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{activeTab} MODE</span>
+                                    <div className="flex items-center gap-2">
+                                        <button type="button" onClick={toggleHandsFree} className={`w-9 h-5 rounded-full transition-colors relative flex items-center ${handsFree ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                                            <div className={`w-3 h-3 bg-white rounded-full absolute transition-transform ${handsFree ? 'translate-x-5' : 'translate-x-1'}`}></div>
+                                        </button>
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">{handsFree ? "Kyra mode" : "Mic off"}</span>
                                     </div>
                                 </div>
-                                <div className="relative flex items-center gap-2">
+                                {/* Input row */}
+                                <div className="flex items-center gap-1">
                                     <input type="file" accept="image/*" className="hidden" ref={imageInputRef} onChange={handleFileSelect} />
-                                    <button type="button" onClick={() => imageInputRef.current?.click()} className="p-4 text-slate-400 hover:text-blue-400 hover:bg-white/5 rounded-full transition-all shrink-0"><ImageIcon size={20}/></button>
-                                    <input value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder={handsFree ? "Ascolto attivo..." : activeTab === 'CODICE' ? "Chiedi di generare uno script..." : "Invia comando..."} className="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder:text-slate-600 font-medium py-4" />
-                                    <button type="button" onClick={toggleVoiceInput} disabled={handsFree} className={`p-4 rounded-full transition-all flex items-center justify-center shrink-0 ${handsFree ? 'opacity-30' : isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}><Mic size={20}/></button>
-                                    <button type="submit" disabled={!inputText.trim() && !attachment} className="p-4 bg-blue-600 rounded-full text-white shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:scale-105 active:scale-95 transition-all shrink-0"><Send size={20}/></button>
+                                    <button type="button" onClick={() => imageInputRef.current?.click()} className="p-3 text-slate-400 hover:text-blue-400 rounded-full transition-all shrink-0">
+                                        <ImageIcon size={18}/>
+                                    </button>
+                                    {/* FIX: font-size 16px previene zoom iOS su focus */}
+                                    <input 
+                                        value={inputText} 
+                                        onChange={(e) => setInputText(e.target.value)} 
+                                        placeholder={handsFree ? "Ascolto attivo..." : activeTab === 'CODICE' ? "Genera script..." : "Invia comando..."} 
+                                        style={{fontSize: '16px'}}
+                                        className="flex-1 bg-transparent text-white focus:outline-none placeholder:text-slate-600 font-medium py-3" 
+                                    />
+                                    <button type="button" onClick={toggleVoiceInput} disabled={handsFree} className={`p-3 rounded-full transition-all flex items-center justify-center shrink-0 ${handsFree ? 'opacity-30' : isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}>
+                                        <Mic size={18}/>
+                                    </button>
+                                    <button type="submit" disabled={!inputText.trim() && !attachment} className="p-3 bg-blue-600 rounded-full text-white hover:scale-105 active:scale-95 transition-all shrink-0 disabled:opacity-40">
+                                        <Send size={18}/>
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -255,7 +445,12 @@
             );
         };
 
-        const AppCard = ({ icon, label, onClick }) => ( <button onClick={onClick} className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col items-center justify-center gap-4 hover:bg-white/5 hover:border-blue-500/30 transition-all group active:scale-95"><div className="p-4 bg-black/40 rounded-2xl group-hover:scale-110 transition-transform shadow-inner">{icon}</div><span className="text-xs font-black uppercase tracking-widest text-slate-300 group-hover:text-white">{label}</span></button> );
+        const AppCard = ({ icon, label, onClick }) => ( 
+            <button onClick={onClick} className="glass-panel p-4 rounded-2xl border border-white/10 flex flex-col items-center justify-center gap-3 hover:bg-white/5 hover:border-blue-500/30 transition-all group active:scale-95">
+                <div className="p-3 bg-black/40 rounded-xl group-hover:scale-110 transition-transform shadow-inner">{icon}</div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-300 group-hover:text-white">{label}</span>
+            </button> 
+        );
 
         const root = createRoot(document.getElementById('root'));
         root.render(<App />);
